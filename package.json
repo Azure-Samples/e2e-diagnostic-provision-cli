@@ -1,0 +1,18 @@
+{
+  "name": "happy-deploy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "azure": "^2.2.1-preview",
+    "azure-arm-appinsights": "^1.1.0-preview",
+    "azure-iothub": "^1.2.3",
+    "inquirer": "^5.1.0",
+    "uuid": "^3.2.1"
+  }
+}
