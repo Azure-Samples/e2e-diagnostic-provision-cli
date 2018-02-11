@@ -15,8 +15,8 @@ const IoTHubRegistry = require('azure-iothub').Registry;
 let credentials = '';
 
 let data = {
-  subscriptionId: '',//'faab228d-df7a-4086-991e-e81c4659d41a',
-  resourceGroup: '',//'zhiqing-sdk-test',
+  subscriptionId: '',
+  resourceGroup: '',
   location: '',
   useAI: false,
   deployWebapp: false,
@@ -62,6 +62,9 @@ let data = {
     apiKey: '',
     name: '',
   },
+  serviceplan: {
+    id: '',
+  },
   function: {
     envKey: {
       eventhubEndpoint: 'E2E_DIAGNOSTICS_EVENTHUB_ENDPOINT',
@@ -76,10 +79,11 @@ let data = {
   },
   webapp: {
     githubRepo: 'https://github.com/Azure-Samples/e2e-diagnostics-portal',
-    githubBranch: 'master',
+    githubBranch: 'static',
     envKey: {
       subscriptionId: 'SUBSCRIPTION_ID',
       resourceGroup: 'RESOURCE_GROUP_NAME',
+      iothub: 'IOTHUB_CONNECTION_STRING',
       aiAppId: 'AI_APP_ID',
       aiApiKey: 'AI_API_KEY',
       aiName: 'AI_NAME',
@@ -168,7 +172,7 @@ async function setOption() {
     message: 'A web portal will be provided to visualize diagnostic data. Choose how to deploy this portal',
     choices: [
       {
-        name: 'Deploy on Azure Web app',
+        name: 'Deploy on Azure Web app(Which will need less manual work)',
         value: true
       },
       {
@@ -210,7 +214,7 @@ async function createIoTHub() {
   let result = await client.iotHubResource
     .createOrUpdate(data.resourceGroup, hubDescription.name, hubDescription);
   let { hostName } = result.properties;
-  console.log(`IoT Hub created`);
+  console.log(`IoT Hub created\n`);
 
   console.log(`Fetching connection string of IoT Hub...`);
   let keyResult = await client.iotHubResource.getKeysForKeyName(hubDescription.resourcegroup, hubDescription.name, data.iothub.role);
@@ -235,7 +239,16 @@ async function createIoTHub() {
   data.iothub.deviceConnectionString = `HostName=${hostName};DeviceId=${deviceResult.deviceId};SharedAccessKey=${deviceResult.authentication.symmetricKey.primaryKey}`;
   console.log(`IoT Hub Device created\n`);
 
-  // TODO: set sampling rate 
+  console.log(`Setting device diagnostic sampling rate to 100...`);
+  await new Promise((resolve, reject) => {
+    registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { __e2e_diag_sample_rate: 100 } } }, '*', (err, result) => {
+      if (err) {
+        reject(err);
+      }
+      resolve();
+    });
+  });
+  console.log(`Sampling rate set\n`);
 }
 
 async function createEventHub() {
@@ -249,12 +262,12 @@ async function createEventHub() {
   console.log(`Creating Event Hub ${name}...`);
   const client = new EventHubClient(credentials, data.subscriptionId);
   let result = await client.namespaces.createOrUpdate(data.resourceGroup, name, eventHubOptions);
-  console.log(`Event Hub created`);
+  console.log(`Event Hub created\n`);
 
   console.log(`Fetching connection string of Event Hub...`);
   let keyResult = await client.namespaces.listKeys(eventHubOptions.resourcegroup, name, data.eventhub.role);
   data.eventhub.connectionString = keyResult.primaryConnectionString;
-  console.log(`Connection string fetched\n`);
+  console.log(`Connection string fetched\n\n-------------------------------------------------------------------\n`);
 }
 
 async function createApplicationInsights() {
@@ -278,25 +291,23 @@ async function createApplicationInsights() {
   data.ai.applicationId = result.appId;
   data.ai.name = result.name;
   data.ai.instrumentationKey = result.instrumentationKey;
-  console.log(`Application Insights created`);
+  console.log(`Application Insights created\n`);
 
   // TODO: fetch api key
   console.log(`Generating Api key for Application Insights ${appInsightsOptions.name}...`);
   let keyResult = await client.aPIKeys.create(data.resourceGroup, appInsightsOptions.name, apiKeyOptions);
   data.ai.apiKey = keyResult.apiKey;
-  console.log(`Api key generated\n`);
+  console.log(`Api key generated\n\n-------------------------------------------------------------------\n`);
 }
 
 async function createFunctionApp() {
-  // const appServicePlanOptions = {
-  //   appServicePlanName: 'zhiqing-sdk-service-plan',
-  //   location: data.location,
-  //   subscriptionid: data.subscriptionId,
-  //   resourcegroup: data.resourceGroup,
-  //   sku: {
-  //     name: "S1" // F1,D1,B1,S1
-  //   }
-  // }
+  const appServicePlanOptions = {
+    appServicePlanName: 'function-server-plan' + data.suffix,
+    location: data.location,
+    sku: {
+      name: "B1" // F1,D1,B1,S1
+    }
+  }
 
   if (!data.eventhub.connectionString) {
     throw new Error('Function app depends on Event Hub connection string which is empty');
@@ -311,6 +322,7 @@ async function createFunctionApp() {
     kind: 'functionapp',
     location: data.location,
     siteConfig: {
+      alwaysOn: true,
       appSettings: [
         {
           name: 'AzureWebJobsDashboard',
@@ -343,7 +355,7 @@ async function createFunctionApp() {
   const functionAppOptions = {
     repoUrl: data.function.githubRepo,
     branch: data.function.githubBranch,
-    isManualIntegration: true
+    isManualIntegration: true,
   }
 
   const functionSiteName = 'function-container' + data.suffix;
@@ -351,12 +363,12 @@ async function createFunctionApp() {
 
   let client = new WebSiteManagementClient(credentials, data.subscriptionId);
 
-  /* console.log(`Creating Service plan ${appServicePlanOptions.appServicePlanName}...`);
-  
+  console.log(`Creating Service plan ${appServicePlanOptions.appServicePlanName}...`);
+
   let aspResult = await client.appServicePlans.createOrUpdate(data.resourceGroup, appServicePlanOptions.appServicePlanName, appServicePlanOptions);
-  console.log(aspResult);
-  data.serviceplan.name = aspResult.appServicePlanName;
-  console.log(`Service plan created`); */
+  data.serviceplan.id = aspResult.id;
+  functionSiteOptions.serverFarmId = aspResult.id; //"/subscriptions/{subscriptionID}/resourceGroups/{groupName}/providers/Microsoft.Web/serverfarms/{appServicePlanName}".
+  console.log(`Service plan created\n`);
 
   console.log(`Creating Function site ${functionSiteName}...`);
   let functionSiteResult = await client.webApps.createOrUpdate(data.resourceGroup, functionSiteName, functionSiteOptions);
@@ -364,7 +376,9 @@ async function createFunctionApp() {
 
   console.log(`Creating Function app ${functionAppName}...`);
   let functionAppResult = await client.webApps.createOrUpdateSourceControl(data.resourceGroup, functionSiteName, functionAppOptions);
-  console.log(`Function app created\n`)
+  // When deployed function app, it will not consume Event Hub data.(Don't know why). 
+  let restartResult = await client.webApps.restart(data.resourceGroup, functionSiteName);
+  console.log(`Function app created\n\n-------------------------------------------------------------------\n`)
 }
 
 async function createStorage() {
@@ -374,28 +388,38 @@ async function createStorage() {
     kind: 'Storage',
   }
   let name = 'storage' + data.suffix;
-  name = name.replace(/[^a-z0-9]/g,'');
+  name = name.replace(/[^a-z0-9]/g, '');
   console.log(`Creating Storage account ${name}...`);
   const client = new StorageManagementClient(credentials, data.subscriptionId);
   let result = await client.storageAccounts.create(data.resourceGroup, name, storageOptions);
   data.storage.name = result.name;
-  console.log(`Storage account created`);
+  console.log(`Storage account created\n`);
 
   console.log(`Fetching connection string of Storage...`);
   let keyResult = await client.storageAccounts.listKeys(data.resourceGroup, name);
   data.storage.connectionString = `DefaultEndpointsProtocol=https;AccountName=${result.name};AccountKey=${keyResult.keys[0].value};EndpointSuffix=core.windows.net`;
-  console.log(`Connection string fetched\n`);
+  console.log(`Connection string fetched\n\n-------------------------------------------------------------------\n`);
 }
 
 async function createWebApp() {
   let appSettings;
 
-  if (!data.ai.name || !data.ai.applicationId || !data.ai.apiKey) {
-    throw new Error('Web app depends on Application insights information which is empty');
+  if (data.useAI) {
+    if (!data.ai.name || !data.ai.applicationId || !data.ai.apiKey) {
+      throw new Error('Web app depends on Application insights information which is empty');
+    }
+  } else {
+    if (!data.storage.connectionString) {
+      throw new Error('Web app depends on Storage information which is empty');
+    }
   }
 
   if (data.useAI) {
     appSettings = [
+      {
+        name: 'WEBSITE_NODE_DEFAULT_VERSION',
+        value: '6.9.1',
+      },
       {
         name: data.webapp.envKey.subscriptionId,
         value: data.subscriptionId,
@@ -403,6 +427,10 @@ async function createWebApp() {
       {
         name: data.webapp.envKey.resourceGroup,
         value: data.resourceGroup,
+      },
+      {
+        name: data.webapp.envKey.iothub,
+        value: data.iothub.connectionString,
       },
       {
         name: data.webapp.envKey.aiName,
@@ -420,6 +448,10 @@ async function createWebApp() {
   } else {
     appSettings = [
       {
+        name: 'WEBSITE_NODE_DEFAULT_VERSION',
+        value: '6.9.1',
+      },
+      {
         name: data.webapp.envKey.subscriptionId,
         value: data.subscriptionId,
       },
@@ -428,13 +460,17 @@ async function createWebApp() {
         value: data.resourceGroup,
       },
       {
+        name: data.webapp.envKey.iothub,
+        value: data.iothub.connectionString,
+      },
+      {
         name: data.webapp.envKey.storageCs,
         value: data.storage.connectionString,
       },
     ]
   }
   const webAppOptions = {
-    serverFarmId: '',
+    serverFarmId: data.serviceplan.id,
     location: data.location,
     siteConfig: {
       appSettings,
@@ -458,21 +494,26 @@ async function createWebApp() {
   let deployResult = await client.webApps.createOrUpdateSourceControl(data.resourceGroup, webAppName, deployOptions);
   console.log(`E2E portal deployed\n`)
 
-  console.log(`Visit portal in this link: ${'http://' + webAppResult.hostNames[0]}`);
+  console.log(`Visit portal in this link: ${'http://' + webAppResult.hostNames[0]}\n\n-------------------------------------------------------------------\n`);
 }
 
 async function showInstructionsToDeployWebapp() {
   console.log(`Here's the instructions to deploy web portal on your own server.\n`);
-  console.log(`First you need to set some environement variables:\n`);
-  console.log(`${data.webapp.envKey.subscriptionId} : ${data.subscriptionId}`);
-  console.log(`${data.webapp.envKey.resourceGroup} : ${data.resourceGroup}`);
+  console.log(`First you need to set some environement variables:\n\n-------------------------------------------------------------------\n`);
+  console.log(`${data.webapp.envKey.subscriptionId} : ${data.subscriptionId}\n`);
+  console.log(`${data.webapp.envKey.resourceGroup} : ${data.resourceGroup}\n`);
+  console.log(`${data.webapp.envKey.iothub} : ${data.iothub.connectionString}\n`);
   if (data.useAI) {
-    console.log(`${data.webapp.envKey.aiName} : ${data.ai.name}`);
-    console.log(`${data.webapp.envKey.aiAppId} : ${data.ai.applicationId}`);
-    console.log(`${data.webapp.envKey.aiApiKey} : ${data.ai.apiKey}`);
+    console.log(`${data.webapp.envKey.aiName} : ${data.ai.name}\n`);
+    console.log(`${data.webapp.envKey.aiAppId} : ${data.ai.applicationId}\n`);
+    console.log(`${data.webapp.envKey.aiApiKey} : ${data.ai.apiKey}\n`);
   } else {
-    console.log(`${data.webapp.envKey.storageCs} : ${data.storage.connectionString}`);
+    console.log(`${data.webapp.envKey.storageCs} : ${data.storage.connectionString}\n`);
   }
+  console.log();
+  console.log(`Then you need to set one more environment variable to specify the port which the portal running on`);
+  console.log(`PORT : <THE_PORT_OF_PORTAL>`);
+  console.log(`Please notice that if you use a lower port like 80, then you probably need administrator/root privilege. On Windows system, 80 is likely to be occupied by IIS service. Try using port larger than 1024 if you meet problem.`);
   console.log();
   console.log(`Open a new command window and execute following commands`);
   console.log(`git clone https://github.com/Azure-Samples/e2e-diagnostics-portal.git`);
@@ -489,8 +530,6 @@ async function doChoice1() {
   await createFunctionApp();
   if (data.deployWebapp) {
     await createWebApp();
-  } else {
-    await showInstructionsToDeployWebapp();
   }
 }
 
@@ -499,8 +538,6 @@ async function doChoice2() {
   await createStorage();
   if (data.deployWebapp) {
     await createWebApp();
-  } else {
-    await showInstructionsToDeployWebapp();
   }
 }
 
@@ -517,8 +554,12 @@ async function run() {
     } else {
       await doChoice2();
     }
-    console.log(`\n\n*** All the deployment work successfully finished. ***\n`);
-    console.log(`Use this device connection string to have a test: ${data.iothub.deviceConnectionString}`);
+    console.log(`\n\n-------------------------------------------------------------------\n*** All the deployment work successfully finished. ***\n`);
+    console.log(`Use this device connection string to have a test: ${data.iothub.deviceConnectionString}\n`);
+
+    if (!data.deployWebapp) {
+      await showInstructionsToDeployWebapp();
+    }
   }
   catch (e) {
     console.log('Something went error during deployment: ', e.message);
@@ -526,3 +567,21 @@ async function run() {
 }
 
 run()
+
+// async function test() {
+//   credentials = await login();
+//   let s = "abc";
+//   data.useAI = true;
+//   data.eventhub.connectionString = s;
+//   data.ai.instrumentationKey = s;
+//   data.storage.connectionString = '';
+//   data.storage.name = '';
+//   data.subscriptionId = "0d0575c0-0b3f-458a-a1a7-7a618a596892";
+//   data.resourceGroup = "zhiqing-automation-test11"
+//   data.location = "North Europe"
+//   data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
+
+//   await createFunctionApp();
+// }
+
+// test();
