@@ -3,6 +3,7 @@ const MsRest = require('ms-rest-azure');
 const SubscriptionClient = require('azure-asm-subscription');
 const ResourceClient = require('azure-arm-resource');
 const IoTHubClient = require('azure-arm-iothub');
+const MonitorManagementClient = require('azure-arm-monitor');
 const EventHubClient = require('azure-arm-eventhub');
 const AppInsightsClient = require("azure-arm-appinsights");
 const StorageManagementClient = require('azure-arm-storage');
@@ -48,12 +49,14 @@ let data = {
   ],
   iothub: {
     role: 'iothubowner',
+    id: '',
     connectionString: '',
     deviceConnectionString: '',
   },
   eventhub: {
     role: 'RootManageSharedAccessKey',
     endpointName: 'insights-logs-e2ediagnostics',
+    authorizationRuleId: '',
     connectionString: '',
   },
   ai: {
@@ -74,6 +77,7 @@ let data = {
     githubBranch: 'auto',
   },
   storage: {
+    id: '',
     connectionString: '',
     name: '',
   },
@@ -214,6 +218,7 @@ async function createIoTHub() {
   let result = await client.iotHubResource
     .createOrUpdate(data.resourceGroup, hubDescription.name, hubDescription);
   let { hostName } = result.properties;
+  data.iothub.id = result.id;
   console.log(`IoT Hub created\n`);
 
   console.log(`Fetching connection string of IoT Hub...`);
@@ -262,6 +267,10 @@ async function createEventHub() {
   console.log(`Creating Event Hub ${name}...`);
   const client = new EventHubClient(credentials, data.subscriptionId);
   let result = await client.namespaces.createOrUpdate(data.resourceGroup, name, eventHubOptions);
+  
+  let authorizationResult = await client.namespaces.getAuthorizationRule(data.resourceGroup, name, 'RootManageSharedAccessKey');
+  data.eventhub.authorizationRuleId = authorizationResult.id;
+
   console.log(`Event Hub created\n`);
 
   console.log(`Fetching connection string of Event Hub...`);
@@ -393,12 +402,32 @@ async function createStorage() {
   const client = new StorageManagementClient(credentials, data.subscriptionId);
   let result = await client.storageAccounts.create(data.resourceGroup, name, storageOptions);
   data.storage.name = result.name;
+  data.storage.id = result.id;
   console.log(`Storage account created\n`);
 
   console.log(`Fetching connection string of Storage...`);
   let keyResult = await client.storageAccounts.listKeys(data.resourceGroup, name);
   data.storage.connectionString = `DefaultEndpointsProtocol=https;AccountName=${result.name};AccountKey=${keyResult.keys[0].value};EndpointSuffix=core.windows.net`;
   console.log(`Connection string fetched\n\n-------------------------------------------------------------------\n`);
+}
+
+async function setIoTHubDiagnostics() {
+  let client = new MonitorManagementClient(credentials, data.subscriptionId);
+  let diagnosticOptions = {
+    logs: [{
+      category: 'E2EDiagnostics',
+      enabled: true,
+    }]
+  }
+  
+  if(!data.useAI) {
+    diagnosticOptions.storageAccountId = data.storage.id;
+  }else {
+    diagnosticOptions.eventHubAuthorizationRuleId = data.eventhub.authorizationRuleId;
+  }
+  console.log(`Setting the IoT Hub diagnostics settings...`);
+  let result = await client.diagnosticSettingsOperations.createOrUpdate(data.iothub.id, diagnosticOptions, 'e2e-diag');
+  console.log(`IoT Hub diagnostics settings set\n\n-------------------------------------------------------------------\n`);
 }
 
 async function createWebApp() {
@@ -527,6 +556,7 @@ async function doChoice1() {
   await createEventHub();
   await createApplicationInsights();
   await createStorage();
+  await setIoTHubDiagnostics();
   await createFunctionApp();
   if (data.deployWebapp) {
     await createWebApp();
@@ -536,6 +566,7 @@ async function doChoice1() {
 async function doChoice2() {
   await createIoTHub();
   await createStorage();
+  await setIoTHubDiagnostics();
   if (data.deployWebapp) {
     await createWebApp();
   }
@@ -568,6 +599,8 @@ async function run() {
 
 run()
 
+
+
 // async function test() {
 //   credentials = await login();
 //   let s = "abc";
@@ -577,11 +610,9 @@ run()
 //   data.storage.connectionString = '';
 //   data.storage.name = '';
 //   data.subscriptionId = "0d0575c0-0b3f-458a-a1a7-7a618a596892";
-//   data.resourceGroup = "zhiqing-automation-test11"
+//   data.resourceGroup = "automation-deploy"
 //   data.location = "North Europe"
 //   data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
 
-//   await createFunctionApp();
+//   await monitorTest();
 // }
-
-// test();
