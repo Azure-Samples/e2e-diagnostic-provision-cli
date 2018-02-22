@@ -1,5 +1,5 @@
 {
-  "name": "happy-deploy",
+  "name": "e2e-happy-deploy",
   "version": "1.0.0",
   "description": "Provision Azure resource for IoT E2E diagnostics",
   "main": "happy-deploy.js",
