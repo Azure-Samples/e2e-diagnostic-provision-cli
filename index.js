@@ -10,6 +10,7 @@ const StorageManagementClient = require('azure-arm-storage');
 const WebSiteManagementClient = require('azure-arm-website');
 const inquirer = require('inquirer');
 const uuidV4 = require('uuid/v4');
+const colors = require('colors/safe');
 
 const IoTHubRegistry = require('azure-iothub').Registry;
 
@@ -588,7 +589,7 @@ async function createWebApp() {
   let deployResult = await client.webApps.createOrUpdateSourceControl(data.resourceGroup, webAppName, deployOptions);
   console.log(`E2E portal deployed\n`)
 
-  console.log(`Visit portal in this link: ${'http://' + webAppResult.hostNames[0]}\n\n-------------------------------------------------------------------\n`);
+  console.log(`Visit portal in this link: ${colors.green.bold.underline('http://' + webAppResult.hostNames[0])}\n\n-------------------------------------------------------------------\n`);
 }
 
 async function showInstructionsToDeployWebapp() {
@@ -638,7 +639,7 @@ async function doChoice2() {
 }
 
 async function run() {
-  console.log(`*** Welcome to Happy Deploy of End to end diagnostics ***\nThis tool would help you create necessary resources for end to end diagnostics.\nIf you would like to know what will be created, visit this document: https://github.com/michaeljqzq/happy-deploy\n`);
+  console.log(colors.green.bold(`*** Welcome to Happy Deploy of End to end diagnostics ***\nThis tool would help you create necessary resources for end to end diagnostics.\nIf you would like to know what will be created, visit this document: ${colors.underline('https://github.com/michaeljqzq/happy-deploy')}\n`));
   try {
     credentials = await login();
     await getSubscription();
@@ -650,8 +651,8 @@ async function run() {
     } else {
       await doChoice2();
     }
-    console.log(`\n\n-------------------------------------------------------------------\n*** All the deployment work successfully finished. ***\n`);
-    console.log(`Use this device connection string to have a test: ${data.iothub.deviceConnectionString}\n`);
+    console.log(colors.green.bold(`\n\n-------------------------------------------------------------------\n*** All the deployment work successfully finished. ***\n`));
+    console.log(`Use this device connection string to have a test: ${colors.green.bold(data.iothub.deviceConnectionString)}\n`);
 
     if (!data.deployWebapp) {
       await showInstructionsToDeployWebapp();
