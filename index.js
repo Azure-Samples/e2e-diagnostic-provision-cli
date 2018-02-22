@@ -18,6 +18,7 @@ let credentials = '';
 let data = {
   subscriptionId: '',
   resourceGroup: '',
+  iothubResourceGroup: '',
   location: '',
   useAI: false,
   deployWebapp: false,
@@ -50,8 +51,11 @@ let data = {
   iothub: {
     role: 'iothubowner',
     id: '',
+    name: '',
+    hostName: '',
     connectionString: '',
     deviceConnectionString: '',
+    useNew: false,
   },
   eventhub: {
     role: 'RootManageSharedAccessKey',
@@ -127,6 +131,27 @@ async function getSubscription() {
 }
 
 async function createResourceGroup() {
+  let iothubAnswers = await inquirer.prompt({
+    type: 'list',
+    name: 'choice',
+    message: 'You can create a new IoT Hub or use existing one.',
+    choices: [
+      {
+        name: 'Create a new IoT Hub',
+        value: true
+      },
+      {
+        name: 'Use existing IoT Hub(Then all resources will be created in the same location with IoT Hub)',
+        value: false
+      }
+    ],
+  });
+  data.iothub.useNew = iothubAnswers.choice;
+
+  if (!data.iothub.useNew) {
+    await getExistingIoTHub();
+  }
+
   let nameAnswers = await inquirer.prompt({
     type: 'input',
     name: 'name',
@@ -134,14 +159,16 @@ async function createResourceGroup() {
     default: () => 'e2e-diagnostics'
   });
 
-  let answers = await inquirer.prompt({
-    type: 'list',
-    name: 'location',
-    message: 'Choose the location of all provisioned resources',
-    choices: data.availableLocationList,
-  });
-  data.location = answers.location;
-  console.log();
+  if (data.iothub.useNew) {
+    let answers = await inquirer.prompt({
+      type: 'list',
+      name: 'location',
+      message: 'Choose the location of all provisioned resources',
+      choices: data.availableLocationList,
+    });
+    data.location = answers.location;
+    console.log();
+  }
 
   console.log(`Creating resource group ${nameAnswers.name} on location ${data.location}`);
   let client = new ResourceClient.ResourceManagementClient(credentials, data.subscriptionId);
@@ -189,20 +216,52 @@ async function setOption() {
   console.log();
 }
 
-async function createIoTHub() {
-  let nameAnswers = await inquirer.prompt({
-    type: 'input',
-    name: 'name',
-    message: "Input the IoT Hub name",
-    default: () => 'iothub' + data.suffix,
-  });
+async function getExistingIoTHub() {
+  const client = new IoTHubClient(credentials, data.subscriptionId);
+  let result = await client.iotHubResource.listBySubscription();
 
-  let skuAnswers = await inquirer.prompt({
+  // choose iothub
+  const inquirerOptions = [{
     type: 'list',
-    name: 'sku',
-    message: 'Choose the pricing and scale tier of IoT Hub',
-    choices: ['F1', 'S1', 'S2', 'S3'],
-  });
+    name: 'iothub',
+    message: 'Choose the IoT Hub',
+    choices: result.map(r => ({
+      name: `${r.name} (in ${r.location})`,
+      value: r,
+    })),
+  }];
+  let answers = await inquirer.prompt(inquirerOptions);
+  data.iothub.name = answers.iothub.name;
+  data.iothub.id = answers.iothub.id;
+  data.iothub.hostName = answers.iothub.properties.hostName;
+  data.location = answers.iothub.location;
+  data.iothubResourceGroup = answers.iothub.resourcegroup;
+}
+
+async function createIoTHub() {
+  if (data.iothub.useNew) {
+    let nameAnswers = await inquirer.prompt({
+      type: 'input',
+      name: 'name',
+      message: "Input the IoT Hub name",
+      default: () => 'iothub' + data.suffix,
+    });
+
+    let skuAnswers = await inquirer.prompt({
+      type: 'list',
+      name: 'sku',
+      message: 'Choose the pricing and scale tier of IoT Hub',
+      choices: ['F1', 'S1', 'S2', 'S3'],
+    });
+
+    const hubDescription = {
+      name: nameAnswers.name,
+      location: data.location,
+      subscriptionid: data.subscriptionId,
+      resourcegroup: data.resourceGroup,
+      sku: { name: skuAnswers.sku, capacity: 1 },
+    };
+  }
 
   let samplingRateAnswers = await inquirer.prompt({
     type: 'input',
@@ -211,26 +270,21 @@ async function createIoTHub() {
     default: () => 100,
   });
 
-  const hubDescription = {
-    name: nameAnswers.name,
-    location: data.location,
-    subscriptionid: data.subscriptionId,
-    resourcegroup: data.resourceGroup,
-    sku: { name: skuAnswers.sku, capacity: 1 },
-  };
-
   const client = new IoTHubClient(credentials, data.subscriptionId);
 
-  console.log(`Creating IoT Hub ${hubDescription.name}...`);
-  let result = await client.iotHubResource
-    .createOrUpdate(data.resourceGroup, hubDescription.name, hubDescription);
-  let { hostName } = result.properties;
-  data.iothub.id = result.id;
-  console.log(`IoT Hub created\n`);
+  if (data.iothub.useNew) {
+    console.log(`Creating IoT Hub ${hubDescription.name}...`);
+    let result = await client.iotHubResource
+      .createOrUpdate(data.resourceGroup, hubDescription.name, hubDescription);
+    let { hostName } = result.properties;
+    data.iothub.id = result.id;
+    data.iothub.name = result.name;
+    console.log(`IoT Hub created\n`);
+  }
 
   console.log(`Fetching connection string of IoT Hub...`);
-  let keyResult = await client.iotHubResource.getKeysForKeyName(hubDescription.resourcegroup, hubDescription.name, data.iothub.role);
-  data.iothub.connectionString = `HostName=${hostName};SharedAccessKeyName=${data.iothub.role};SharedAccessKey=${keyResult.primaryKey}`;
+  let keyResult = await client.iotHubResource.getKeysForKeyName(data.iothub.useNew ? data.resourceGroup : data.iothubResourceGroup, data.iothub.name, data.iothub.role);
+  data.iothub.connectionString = `HostName=${data.iothub.useNew ? hostName: data.iothub.hostName};SharedAccessKeyName=${data.iothub.role};SharedAccessKey=${keyResult.primaryKey}`;
   console.log(`Connection string fetched\n`);
 
   const deviceOptions = {
@@ -248,12 +302,12 @@ async function createIoTHub() {
       resolve(result);
     })
   });
-  data.iothub.deviceConnectionString = `HostName=${hostName};DeviceId=${deviceResult.deviceId};SharedAccessKey=${deviceResult.authentication.symmetricKey.primaryKey}`;
+  data.iothub.deviceConnectionString = `HostName=${data.iothub.useNew ? hostName: data.iothub.hostName};DeviceId=${deviceResult.deviceId};SharedAccessKey=${deviceResult.authentication.symmetricKey.primaryKey}`;
   console.log(`IoT Hub Device created\n`);
 
   console.log(`Setting device diagnostic sampling rate to ${samplingRateAnswers.rate}...`);
   await new Promise((resolve, reject) => {
-    registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { __e2e_diag_sample_rate: samplingRateAnswers.rate } } }, '*', (err, result) => {
+    registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { __e2e_diag_sample_rate: parseInt(samplingRateAnswers.rate) } } }, '*', (err, result) => {
       if (err) {
         reject(err);
       }
@@ -621,11 +675,11 @@ run()
 //   data.storage.connectionString = '';
 //   data.storage.name = '';
 //   data.subscriptionId = "0d0575c0-0b3f-458a-a1a7-7a618a596892";
-//   data.resourceGroup = "zhiqing-auto-test"
+//   data.resourceGroup = "zhiqing-auto-3"
 //   data.location = "East US"
 //   data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
 
-//   await createEventHub();
+//   await getExistingIoTHub();
 // }
 
 // test();
