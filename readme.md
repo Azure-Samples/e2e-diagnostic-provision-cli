@@ -1,3 +1,9 @@
+# How to use
+```bash
+npm install e2e-happy-deploy -g
+happy-deploy
+```
+
 # Which resources will be deployed
 
 In this tool, we will create several resources necessary for end to end diagnostics.
@@ -8,17 +14,11 @@ Then diagnostics info will be exported to a place. There're 2 choices:
 ## Store the diagnostics info to Event Hub
 If you choose to store the diagnostics info to Event Hub, the flow is like this.
 ![](doc/eventhub.png "Eventhub")
+
 It will create an Event Hub, Application Insights, Storage account(for function app), Function app, and an Web App(For visualization, you can also choose to deploy on your own web server)
 
 ## Store the diagnostics info to Storage Account
 If you choose to store the diagnostics info to Storage Account, the flow is like this.
-![](doc/storage.png "Eventhub")
-It will create an Storage account, and an Web App(For visualization, you can also choose to deploy on your own web server)
+![Storage](doc/storage.png)
 
-# How to use
-```bash
-git clone https://github.com/michaeljqzq/happy-deploy.git
-cd happy-deploy
-npm install
-npm start
-```
+It will create an Storage account, and an Web App(For visualization, you can also choose to deploy on your own web server)
