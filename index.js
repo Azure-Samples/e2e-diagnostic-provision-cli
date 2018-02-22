@@ -204,6 +204,13 @@ async function createIoTHub() {
     choices: ['F1', 'S1', 'S2', 'S3'],
   });
 
+  let samplingRateAnswers = await inquirer.prompt({
+    type: 'input',
+    name: 'rate',
+    message: "Set the diagnostic sampling rate",
+    default: () => 100,
+  });
+
   const hubDescription = {
     name: nameAnswers.name,
     location: data.location,
@@ -244,9 +251,9 @@ async function createIoTHub() {
   data.iothub.deviceConnectionString = `HostName=${hostName};DeviceId=${deviceResult.deviceId};SharedAccessKey=${deviceResult.authentication.symmetricKey.primaryKey}`;
   console.log(`IoT Hub Device created\n`);
 
-  console.log(`Setting device diagnostic sampling rate to 100...`);
+  console.log(`Setting device diagnostic sampling rate to ${samplingRateAnswers.rate}...`);
   await new Promise((resolve, reject) => {
-    registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { __e2e_diag_sample_rate: 100 } } }, '*', (err, result) => {
+    registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { __e2e_diag_sample_rate: samplingRateAnswers.rate } } }, '*', (err, result) => {
       if (err) {
         reject(err);
       }
