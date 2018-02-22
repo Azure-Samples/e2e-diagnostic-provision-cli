@@ -8,6 +8,7 @@ const EventHubClient = require('azure-arm-eventhub');
 const AppInsightsClient = require("azure-arm-appinsights");
 const StorageManagementClient = require('azure-arm-storage');
 const WebSiteManagementClient = require('azure-arm-website');
+const OperationalInsightsManagement = require("azure-arm-operationalinsights");
 const inquirer = require('inquirer');
 const uuidV4 = require('uuid/v4');
 const colors = require('colors/safe');
@@ -21,7 +22,7 @@ let data = {
   resourceGroup: '',
   iothubResourceGroup: '',
   location: '',
-  useAI: false,
+  choice: 0, // 0 Eventhub, 1 storage, 2 Log Analytics
   deployWebapp: false,
   suffix: '',
   availableLocationList: [
@@ -98,6 +99,9 @@ let data = {
       aiName: 'AI_NAME',
       storageCs: 'STORAGE_CONNECTION_STRING',
     }
+  },
+  oms: {
+    id: '',
   }
 }
 
@@ -117,6 +121,7 @@ async function login() {
 async function getSubscription() {
   const client = new ResourceClient.SubscriptionClient(credentials);
   let result = await client.subscriptions.list();
+  console.log(colors.white(' '));
   // choose subscriptions
   const inquirerOptions = [{
     type: 'list',
@@ -187,34 +192,40 @@ async function setOption() {
     choices: [
       {
         name: 'Event Hub (Recommended. You can use SQL-like query to find your diagnostic logs easily. It will create Event Hub, Application Insights and Azure Function.)',
-        value: true
+        value: 0
       },
       {
         name: 'Storage (It will create Storage account.)',
-        value: false
-      }
-    ],
-  });
-  data.useAI = sourceAnswers.choice;
-  console.log();
-
-  let webappAnswers = await inquirer.prompt({
-    type: 'list',
-    name: 'webapp',
-    message: 'A web portal will be provided to visualize diagnostic data. Choose how to deploy this portal',
-    choices: [
-      {
-        name: 'Deploy on Azure Web app(Which will need less manual work)',
-        value: true
+        value: 1
       },
       {
-        name: 'Deploy on your own server',
-        value: false
+        name: 'Log Analytics (It will create Log Analytics and you need to use SQL-like query to do visualization)',
+        value: 2
       }
     ],
   });
-  data.deployWebapp = webappAnswers.webapp;
+  data.choice = sourceAnswers.choice;
   console.log();
+
+  if (data.choice === 0 || data.choice === 1) {
+    let webappAnswers = await inquirer.prompt({
+      type: 'list',
+      name: 'webapp',
+      message: 'A web portal will be provided to visualize diagnostic data. Choose how to deploy this portal',
+      choices: [
+        {
+          name: 'Deploy on Azure Web app(Which will need less manual work)',
+          value: true
+        },
+        {
+          name: 'Deploy on your own server',
+          value: false
+        }
+      ],
+    });
+    data.deployWebapp = webappAnswers.webapp;
+    console.log();
+  }
 }
 
 async function getExistingIoTHub() {
@@ -240,22 +251,23 @@ async function getExistingIoTHub() {
 }
 
 async function createIoTHub() {
+  let nameAnswers, skuAnswers, hubDescription;
   if (data.iothub.useNew) {
-    let nameAnswers = await inquirer.prompt({
+    nameAnswers = await inquirer.prompt({
       type: 'input',
       name: 'name',
       message: "Input the IoT Hub name",
       default: () => 'iothub' + data.suffix,
     });
 
-    let skuAnswers = await inquirer.prompt({
+    skuAnswers = await inquirer.prompt({
       type: 'list',
       name: 'sku',
       message: 'Choose the pricing and scale tier of IoT Hub',
       choices: ['F1', 'S1', 'S2', 'S3'],
     });
 
-    const hubDescription = {
+    hubDescription = {
       name: nameAnswers.name,
       location: data.location,
       subscriptionid: data.subscriptionId,
@@ -273,11 +285,14 @@ async function createIoTHub() {
 
   const client = new IoTHubClient(credentials, data.subscriptionId);
 
+  console.log(colors.green.bold(`\nProvision work start, please wait...\n`));
+
+  let result, hostName;
   if (data.iothub.useNew) {
     console.log(`Creating IoT Hub ${hubDescription.name}...`);
-    let result = await client.iotHubResource
+    result = await client.iotHubResource
       .createOrUpdate(data.resourceGroup, hubDescription.name, hubDescription);
-    let { hostName } = result.properties;
+    hostName = result.properties.hostName;
     data.iothub.id = result.id;
     data.iothub.name = result.name;
     console.log(`IoT Hub created\n`);
@@ -285,7 +300,7 @@ async function createIoTHub() {
 
   console.log(`Fetching connection string of IoT Hub...`);
   let keyResult = await client.iotHubResource.getKeysForKeyName(data.iothub.useNew ? data.resourceGroup : data.iothubResourceGroup, data.iothub.name, data.iothub.role);
-  data.iothub.connectionString = `HostName=${data.iothub.useNew ? hostName: data.iothub.hostName};SharedAccessKeyName=${data.iothub.role};SharedAccessKey=${keyResult.primaryKey}`;
+  data.iothub.connectionString = `HostName=${data.iothub.useNew ? hostName : data.iothub.hostName};SharedAccessKeyName=${data.iothub.role};SharedAccessKey=${keyResult.primaryKey}`;
   console.log(`Connection string fetched\n`);
 
   const deviceOptions = {
@@ -303,7 +318,7 @@ async function createIoTHub() {
       resolve(result);
     })
   });
-  data.iothub.deviceConnectionString = `HostName=${data.iothub.useNew ? hostName: data.iothub.hostName};DeviceId=${deviceResult.deviceId};SharedAccessKey=${deviceResult.authentication.symmetricKey.primaryKey}`;
+  data.iothub.deviceConnectionString = `HostName=${data.iothub.useNew ? hostName : data.iothub.hostName};DeviceId=${deviceResult.deviceId};SharedAccessKey=${deviceResult.authentication.symmetricKey.primaryKey}`;
   console.log(`IoT Hub Device created\n`);
 
   console.log(`Setting device diagnostic sampling rate to ${samplingRateAnswers.rate}...`);
@@ -477,6 +492,21 @@ async function createStorage() {
   console.log(`Connection string fetched\n\n-------------------------------------------------------------------\n`);
 }
 
+async function createLogAnalytics() {
+  const client = new OperationalInsightsManagement(credentials, data.subscriptionId);
+
+  let omsOptions = {
+    sku: { name: 'Free' },
+    location: 'eastus', // Log analytics doesn't need to be same location with iot hub
+  }
+
+  let name = 'oms' + data.suffix;
+  console.log(`Creating Log Analytics (OMS workspace) ${name}...`);
+  let result = await client.workspaces.createOrUpdate(data.resourceGroup, name, omsOptions);
+  data.oms.id = result.id;
+  console.log(`Log Analytics (OMS workspace) created\n\n-------------------------------------------------------------------\n`);
+}
+
 async function setIoTHubDiagnostics() {
   let client = new MonitorManagementClient(credentials, data.subscriptionId);
   let diagnosticOptions = {
@@ -486,10 +516,12 @@ async function setIoTHubDiagnostics() {
     }]
   }
 
-  if (!data.useAI) {
+  if (data.choice === 0) {
+    diagnosticOptions.eventHubAuthorizationRuleId = data.eventhub.authorizationRuleId;
+  } else if (data.choice === 1) {
     diagnosticOptions.storageAccountId = data.storage.id;
   } else {
-    diagnosticOptions.eventHubAuthorizationRuleId = data.eventhub.authorizationRuleId;
+    diagnosticOptions.workspaceId = data.oms.id;
   }
   console.log(`Setting the IoT Hub diagnostics settings...`);
   let result = await client.diagnosticSettingsOperations.createOrUpdate(data.iothub.id, diagnosticOptions, 'e2e-diag');
@@ -499,7 +531,7 @@ async function setIoTHubDiagnostics() {
 async function createWebApp() {
   let appSettings;
 
-  if (data.useAI) {
+  if (data.choice === 0) {
     if (!data.ai.name || !data.ai.applicationId || !data.ai.apiKey) {
       throw new Error('Web app depends on Application insights information which is empty');
     }
@@ -509,7 +541,7 @@ async function createWebApp() {
     }
   }
 
-  if (data.useAI) {
+  if (data.choice === 0) {
     appSettings = [
       {
         name: 'WEBSITE_NODE_DEFAULT_VERSION',
@@ -598,7 +630,7 @@ async function showInstructionsToDeployWebapp() {
   console.log(`${data.webapp.envKey.subscriptionId} : ${data.subscriptionId}\n`);
   console.log(`${data.webapp.envKey.resourceGroup} : ${data.resourceGroup}\n`);
   console.log(`${data.webapp.envKey.iothub} : ${data.iothub.connectionString}\n`);
-  if (data.useAI) {
+  if (data.choice === 0) {
     console.log(`${data.webapp.envKey.aiName} : ${data.ai.name}\n`);
     console.log(`${data.webapp.envKey.aiAppId} : ${data.ai.applicationId}\n`);
     console.log(`${data.webapp.envKey.aiApiKey} : ${data.ai.apiKey}\n`);
@@ -617,7 +649,7 @@ async function showInstructionsToDeployWebapp() {
   console.log(`npm run deploy`);
 }
 
-async function doChoice1() {
+async function doChoice0() {
   await createIoTHub();
   await createEventHub();
   await createApplicationInsights();
@@ -629,13 +661,19 @@ async function doChoice1() {
   }
 }
 
-async function doChoice2() {
+async function doChoice1() {
   await createIoTHub();
   await createStorage();
   await setIoTHubDiagnostics();
   if (data.deployWebapp) {
     await createWebApp();
   }
+}
+
+async function doChoice2() {
+  await createIoTHub();
+  await createLogAnalytics();
+  await setIoTHubDiagnostics();
 }
 
 async function run() {
@@ -646,7 +684,9 @@ async function run() {
     await createResourceGroup();
     await setOption();
     data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
-    if (data.useAI) {
+    if (data.choice === 0) {
+      await doChoice0();
+    } else if (data.choice === 1) {
       await doChoice1();
     } else {
       await doChoice2();
@@ -654,12 +694,12 @@ async function run() {
     console.log(colors.green.bold(`\n\n-------------------------------------------------------------------\n*** All the deployment work successfully finished. ***\n`));
     console.log(`Use this device connection string to have a test: ${colors.green.bold(data.iothub.deviceConnectionString)}\n`);
 
-    if (!data.deployWebapp) {
+    if (!data.deployWebapp && data.choice !== 2) {
       await showInstructionsToDeployWebapp();
     }
   }
   catch (e) {
-    console.log('Something went error during deployment: ', e.message);
+    console.log(colors.red.bold('Something went error during deployment: ', e.message));
   }
 }
 
@@ -670,7 +710,7 @@ run()
 // async function test() {
 //   credentials = await login();
 //   let s = "abc";
-//   data.useAI = true;
+//   data.choice = 2;
 //   data.eventhub.connectionString = s;
 //   data.ai.instrumentationKey = s;
 //   data.storage.connectionString = '';
@@ -680,7 +720,7 @@ run()
 //   data.location = "East US"
 //   data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
 
-//   await getExistingIoTHub();
+//   await createLogAnalytics();
 // }
 
 // test();
