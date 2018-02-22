@@ -9,11 +9,19 @@
   "author": "michaeljqzq@gmail.com",
   "license": "ISC",
   "dependencies": {
-    "azure": "^2.2.1-preview",
     "azure-arm-appinsights": "^1.1.0-preview",
+    "azure-arm-eventhub": "^1.2.0-preview",
+    "azure-arm-iothub": "^1.1.0-preview",
+    "azure-arm-monitor": "^1.0.1-preview",
+    "azure-arm-operationalinsights": "^1.1.0",
+    "azure-arm-resource": "^3.1.0-preview",
+    "azure-arm-storage": "^3.2.0",
+    "azure-arm-website": "^3.0.0-preview",
+    "azure-asm-subscription": "^0.10.2",
     "azure-iothub": "^1.2.3",
     "colors": "^1.1.2",
     "inquirer": "^5.1.0",
+    "ms-rest-azure": "^2.5.3",
     "uuid": "^3.2.1"
   }
 }

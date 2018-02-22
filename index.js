@@ -1,4 +1,3 @@
-const Azure = require('azure');
 const MsRest = require('ms-rest-azure');
 const SubscriptionClient = require('azure-asm-subscription');
 const ResourceClient = require('azure-arm-resource');
