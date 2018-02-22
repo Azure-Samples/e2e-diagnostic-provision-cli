@@ -27,5 +27,9 @@
   },
   "bin": {
     "happy-deploy": "./happy-deploy.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michaeljqzq/happy-deploy"
   }
 }
