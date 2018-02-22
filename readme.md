@@ -1,3 +1,5 @@
+# Happy Deploy &middot; ![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg) [![npm version](https://img.shields.io/npm/v/e2e-happy-deploy.svg?style=flat)](https://www.npmjs.com/package/e2e-happy-deploy) 
+
 # How to use
 ```bash
 npm install e2e-happy-deploy -g
