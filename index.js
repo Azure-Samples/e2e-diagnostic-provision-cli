@@ -253,7 +253,7 @@ async function createIoTHub() {
       resolve();
     });
   });
-  console.log(`Sampling rate set\n`);
+  console.log(`Sampling rate set\n\n-------------------------------------------------------------------\n`);
 }
 
 async function createEventHub() {
@@ -264,13 +264,17 @@ async function createEventHub() {
     sku: { name: 'Basic', capacity: 1 }, //Basic, Standard or Premium
   }
   let name = 'eventhub' + data.suffix;
-  console.log(`Creating Event Hub ${name}...`);
+  console.log(`Creating Event Hub namespace ${name}...`);
   const client = new EventHubClient(credentials, data.subscriptionId);
   let result = await client.namespaces.createOrUpdate(data.resourceGroup, name, eventHubOptions);
-  
+
   let authorizationResult = await client.namespaces.getAuthorizationRule(data.resourceGroup, name, 'RootManageSharedAccessKey');
   data.eventhub.authorizationRuleId = authorizationResult.id;
 
+  console.log(`Event Hub namespace created\n`);
+
+  console.log(`Creating Event Hub insights-logs-e2ediagnostics...`);
+  let diagResult = await client.eventHubs.createOrUpdate(data.resourceGroup, result.name, 'insights-logs-e2ediagnostics', { messageRetentionInDays: 1 });
   console.log(`Event Hub created\n`);
 
   console.log(`Fetching connection string of Event Hub...`);
@@ -419,10 +423,10 @@ async function setIoTHubDiagnostics() {
       enabled: true,
     }]
   }
-  
-  if(!data.useAI) {
+
+  if (!data.useAI) {
     diagnosticOptions.storageAccountId = data.storage.id;
-  }else {
+  } else {
     diagnosticOptions.eventHubAuthorizationRuleId = data.eventhub.authorizationRuleId;
   }
   console.log(`Setting the IoT Hub diagnostics settings...`);
@@ -610,9 +614,11 @@ run()
 //   data.storage.connectionString = '';
 //   data.storage.name = '';
 //   data.subscriptionId = "0d0575c0-0b3f-458a-a1a7-7a618a596892";
-//   data.resourceGroup = "automation-deploy"
-//   data.location = "North Europe"
+//   data.resourceGroup = "zhiqing-auto-test"
+//   data.location = "East US"
 //   data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
 
-//   await monitorTest();
+//   await createEventHub();
 // }
+
+// test();
