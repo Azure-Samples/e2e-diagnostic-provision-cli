@@ -2,9 +2,9 @@
   "name": "happy-deploy",
   "version": "1.0.0",
   "description": "Provision Azure resource for IoT E2E diagnostics",
-  "main": "index.js",
+  "main": "happy-deploy.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node happy-deploy.js"
   },
   "author": "michaeljqzq@gmail.com",
   "license": "ISC",
@@ -20,8 +20,12 @@
     "azure-asm-subscription": "^0.10.2",
     "azure-iothub": "^1.2.3",
     "colors": "^1.1.2",
+    "commander": "^2.14.1",
     "inquirer": "^5.1.0",
     "ms-rest-azure": "^2.5.3",
     "uuid": "^3.2.1"
+  },
+  "bin": {
+    "happy-deploy": "./happy-deploy.js"
   }
 }
