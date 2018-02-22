@@ -1,12 +1,12 @@
 {
   "name": "happy-deploy",
   "version": "1.0.0",
-  "description": "",
+  "description": "Provision Azure resource for IoT E2E diagnostics",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "",
+  "author": "michaeljqzq@gmail.com",
   "license": "ISC",
   "dependencies": {
     "azure": "^2.2.1-preview",
