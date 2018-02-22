@@ -638,7 +638,7 @@ async function doChoice2() {
 }
 
 async function run() {
-  console.log(`*** Welcome to Happy Deploy of End to end diagnostics ***`);
+  console.log(`*** Welcome to Happy Deploy of End to end diagnostics ***\nThis tool would help you create necessary resources for end to end diagnostics.\nIf you would like to know what will be created, visit this document: https://github.com/michaeljqzq/happy-deploy\n`);
   try {
     credentials = await login();
     await getSubscription();
