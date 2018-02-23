@@ -15,7 +15,7 @@ happy-deploy
 In this tool, we will create several resources necessary for end to end diagnostics.
 We will create a new resource group to hold all created resources.  
 You can create a new IoT Hub or use existing one.  
-Then diagnostics info will be exported to a place. There're 2 choices:
+Then diagnostics info will be exported to a place. There're 3 choices:
 
 ## Store the diagnostics info to Event Hub
 If you choose to store the diagnostics info to Event Hub, the flow is like this.
@@ -28,3 +28,9 @@ If you choose to store the diagnostics info to Storage Account, the flow is like
 ![Storage](doc/storage.png)
 
 It will create an Storage account, and an Web App(For visualization, you can also choose to deploy on your own web server)
+
+## Store the diagnostics info to Log Analytics
+If you choose to store the diagnostics info to Log Analytics, the flow is like this.
+![Storage](doc/loganalytics.png)
+
+It will create a Log Analytics, and instead of using a web app to visualize data like previous 2 choices, it will use SQL-like query to generate diagram.
