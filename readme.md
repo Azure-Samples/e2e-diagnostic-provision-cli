@@ -10,6 +10,9 @@ npm install e2e-happy-deploy -g
 happy-deploy
 ```
 
+# Work flow of happy deploy
+![](doc/flow.png)
+
 # Which resources will be deployed
 
 In this tool, we will create several resources necessary for end to end diagnostics.
