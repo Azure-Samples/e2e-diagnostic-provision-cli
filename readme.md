@@ -2,7 +2,7 @@
 
 # How to use
 ## Setup Environment
-Install Node JS from <a href="https://nodejs.org/en/download/" target="_blank">here</a>
+Install Node JS from [here](https://nodejs.org/en/download/)
 
 ## Install happy-deploy from NPM repository
 ```bash
