@@ -705,7 +705,7 @@ async function run() {
 }
 
 program
-  .version('1.0.1')
+  .version('1.1.0')
   .description('This tool would help you create necessary resources for end to end diagnostics.')
 // .option('-n, --name <name>', 'your name', 'GK')
 // .option('-a, --age <age>', 'your age', '22')
