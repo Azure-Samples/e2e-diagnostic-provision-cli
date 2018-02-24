@@ -2,6 +2,7 @@
 
 # How to use
 ## Setup Environment
+Make sure node version is not less than V7.6.0 (node -v)
 Install Node JS from [here](https://nodejs.org/en/download/)
 
 ## Install happy-deploy from NPM repository
