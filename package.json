@@ -1,10 +1,10 @@
 {
-  "name": "e2e-happy-deploy",
+  "name": "e2e-diagnostic-provision-cli",
   "version": "1.1.0",
   "description": "Provision Azure resource for IoT E2E diagnostics",
-  "main": "happy-deploy.js",
+  "main": "e2e-provision.js",
   "scripts": {
-    "start": "node happy-deploy.js"
+    "start": "node e2e-provision.js"
   },
   "author": "michaeljqzq@gmail.com",
   "license": "MIT",
@@ -26,7 +26,7 @@
     "uuid": "^3.2.1"
   },
   "bin": {
-    "happy-deploy": "./happy-deploy.js"
+    "e2e-provision": "./e2e-provision.js"
   },
   "repository": {
     "type": "git",
