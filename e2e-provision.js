@@ -26,6 +26,10 @@ let data = {
   choice: 0, // 0 Eventhub, 1 storage, 2 Log Analytics
   deployWebapp: 0, // 0 deploy web app, 1 deploy own server, 2 not deploy
   suffix: '',
+  currentStep: 1,
+  overallSteps: 1,
+  overallStepsTemplate: [6,3,3],
+  estimatedTimeTemplate: [10,5,5],
   availableLocationList: [
     "Australia East",
     "Australia Southeast",
@@ -207,6 +211,7 @@ async function setOption() {
   });
   data.choice = sourceAnswers.choice;
   console.log();
+  data.overallSteps = data.overallStepsTemplate[data.choice];
 
   if (data.choice === 0 || data.choice === 1) {
     let webappAnswers = await inquirer.prompt({
@@ -229,6 +234,9 @@ async function setOption() {
       ],
     });
     data.deployWebapp = webappAnswers.webapp;
+    if(data.deployWebapp === 0) {
+      data.overallSteps++;
+    }
     console.log();
   }
 }
@@ -281,8 +289,6 @@ async function createIoTHub() {
     };
   }
 
-  console.log(colors.bgBlue.bold(`Please notice that E2E diagnostic is a private-preview feature, so your IoT Hub needs to be whitelisted to enable the feature. Refer to 'Azure IoT Hub with IoT Diagnostics feature enabled' part in the document to do it.\n`));
-
   let samplingRateAnswers = await inquirer.prompt({
     type: 'input',
     name: 'rate',
@@ -290,11 +296,14 @@ async function createIoTHub() {
     default: () => 100,
   });
 
+  console.log(colors.bgBlue.bold(`Please notice that E2E diagnostic is a private-preview feature, so your IoT Hub needs to be whitelisted to enable the feature. Refer to 'Azure IoT Hub with IoT Diagnostics feature enabled' part in the document to do it.\n`));
+
   const client = new IoTHubClient(credentials, data.subscriptionId);
 
-  console.log(colors.green.bold(`\nProvision work start, please wait...\n`));
+  console.log(colors.green.bold(`\nProvision work start, it will need about ${data.estimatedTimeTemplate[data.choice]} minutes, please wait...\n`));
 
   let result, hostName;
+  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   if (data.iothub.useNew) {
     console.log(`Creating IoT Hub ${hubDescription.name}...`);
     result = await client.iotHubResource
@@ -341,6 +350,7 @@ async function createIoTHub() {
 }
 
 async function createEventHub() {
+  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const eventHubOptions = {
     location: data.location,
     subscriptionid: data.subscriptionId,
@@ -368,6 +378,7 @@ async function createEventHub() {
 }
 
 async function createApplicationInsights() {
+  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const appInsightsOptions = {
     name: 'application-insights' + data.suffix,
     kind: 'store',
@@ -398,6 +409,7 @@ async function createApplicationInsights() {
 }
 
 async function createFunctionApp() {
+  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const appServicePlanOptions = {
     appServicePlanName: 'function-server-plan' + data.suffix,
     location: data.location,
@@ -479,6 +491,7 @@ async function createFunctionApp() {
 }
 
 async function createStorage() {
+  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const storageOptions = {
     location: data.location,
     sku: { name: 'Standard_LRS' },
@@ -500,6 +513,7 @@ async function createStorage() {
 }
 
 async function createLogAnalytics() {
+  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const client = new OperationalInsightsManagement(credentials, data.subscriptionId);
 
   let omsOptions = {
@@ -515,6 +529,7 @@ async function createLogAnalytics() {
 }
 
 async function setIoTHubDiagnostics() {
+  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   let client = new MonitorManagementClient(credentials, data.subscriptionId);
   let diagnosticOptions = {
     logs: [{
@@ -536,6 +551,7 @@ async function setIoTHubDiagnostics() {
 }
 
 async function createWebApp() {
+  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   let appSettings;
 
   if (data.choice === 0) {
@@ -691,6 +707,7 @@ async function run() {
     await createResourceGroup();
     await setOption();
     data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
+    
     if (data.choice === 0) {
       await doChoice0();
     } else if (data.choice === 1) {
@@ -698,7 +715,7 @@ async function run() {
     } else {
       await doChoice2();
     }
-    console.log(colors.green.bold(`\n\n-------------------------------------------------------------------\n*** All the deployment work successfully finished. ***\n`));
+    console.log(colors.green.bold(`\n-------------------------------------------------------------------\n\n*** All the deployment work successfully finished. ***\n`));
     console.log(`Use this device connection string to have a test: ${colors.green.bold(data.iothub.deviceConnectionString)}\n`);
 
     if (data.deployWebapp === 1 && data.choice !== 2) {
