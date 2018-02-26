@@ -24,7 +24,7 @@ let data = {
   iothubResourceGroup: '',
   location: '',
   choice: 0, // 0 Eventhub, 1 storage, 2 Log Analytics
-  deployWebapp: false,
+  deployWebapp: 0, // 0 deploy web app, 1 deploy own server, 2 not deploy
   suffix: '',
   availableLocationList: [
     "Australia East",
@@ -216,12 +216,16 @@ async function setOption() {
       choices: [
         {
           name: 'Deploy on Azure Web app(Which will need less manual work)',
-          value: true
+          value: 0
         },
         {
           name: 'Deploy on your own server',
-          value: false
-        }
+          value: 1
+        },
+        {
+          name: 'Do not deploy web portal(Visualize by yourself)',
+          value: 2
+        },
       ],
     });
     data.deployWebapp = webappAnswers.webapp;
@@ -657,7 +661,7 @@ async function doChoice0() {
   await createStorage();
   await setIoTHubDiagnostics();
   await createFunctionApp();
-  if (data.deployWebapp) {
+  if (data.deployWebapp === 0) {
     await createWebApp();
   }
 }
@@ -666,7 +670,7 @@ async function doChoice1() {
   await createIoTHub();
   await createStorage();
   await setIoTHubDiagnostics();
-  if (data.deployWebapp) {
+  if (data.deployWebapp === 0) {
     await createWebApp();
   }
 }
@@ -695,7 +699,7 @@ async function run() {
     console.log(colors.green.bold(`\n\n-------------------------------------------------------------------\n*** All the deployment work successfully finished. ***\n`));
     console.log(`Use this device connection string to have a test: ${colors.green.bold(data.iothub.deviceConnectionString)}\n`);
 
-    if (!data.deployWebapp && data.choice !== 2) {
+    if (data.deployWebapp === 1 && data.choice !== 2) {
       await showInstructionsToDeployWebapp();
     }
   }
