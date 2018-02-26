@@ -281,6 +281,8 @@ async function createIoTHub() {
     };
   }
 
+  console.log(colors.bgBlue.bold(`Please notice that E2E diagnostic is a private-preview feature, so your IoT Hub needs to be whitelisted to enable the feature. Refer to 'Azure IoT Hub with IoT Diagnostics feature enabled' part in the document to do it.\n`));
+
   let samplingRateAnswers = await inquirer.prompt({
     type: 'input',
     name: 'rate',
