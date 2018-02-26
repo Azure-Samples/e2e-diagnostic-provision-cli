@@ -192,7 +192,7 @@ async function setOption() {
     message: 'Choose the destination of diagnostic logs',
     choices: [
       {
-        name: 'Event Hub (Recommended. You can use SQL-like query to find your diagnostic logs easily. It will create Event Hub, Application Insights and Azure Function(including a storage account).)',
+        name: 'Event Hub (It will create Event Hub, Application Insights and Azure Function including a storage account.)',
         value: 0
       },
       {
