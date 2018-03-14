@@ -16,6 +16,8 @@ const program = require('commander');
 
 const IoTHubRegistry = require('azure-iothub').Registry;
 
+const defaultEventHubName4Log = 'insights-logs-e2ediagnostics';
+
 let credentials = '';
 
 let data = {
@@ -66,7 +68,7 @@ let data = {
   },
   eventhub: {
     role: 'RootManageSharedAccessKey',
-    endpointName: 'insights-logs-e2ediagnostics',
+    endpointName: defaultEventHubName4Log,
     authorizationRuleId: '',
     connectionString: '',
   },
@@ -367,8 +369,8 @@ async function createEventHub() {
 
   console.log(`Event Hub namespace created\n`);
 
-  console.log(`Creating Event Hub insights-logs-e2ediagnostics...`);
-  let diagResult = await client.eventHubs.createOrUpdate(data.resourceGroup, result.name, 'insights-logs-e2ediagnostics', { messageRetentionInDays: 1 });
+  console.log(`Creating Event Hub ${defaultEventHubName4Log}...`);
+  let diagResult = await client.eventHubs.createOrUpdate(data.resourceGroup, result.name, defaultEventHubName4Log, { messageRetentionInDays: 1 });
   console.log(`Event Hub created\n`);
 
   console.log(`Fetching connection string of Event Hub...`);
@@ -535,11 +537,16 @@ async function setIoTHubDiagnostics() {
     logs: [{
       category: 'E2EDiagnostics',
       enabled: true,
+    },
+    {
+      category: 'Connections',
+      enabled: true,
     }]
   }
 
   if (data.choice === 0) {
     diagnosticOptions.eventHubAuthorizationRuleId = data.eventhub.authorizationRuleId;
+    diagnosticOptions.eventHubName = defaultEventHubName4Log;
   } else if (data.choice === 1) {
     diagnosticOptions.storageAccountId = data.storage.id;
   } else {
