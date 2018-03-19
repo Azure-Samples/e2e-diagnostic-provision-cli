@@ -8,6 +8,7 @@ Install Node JS from [here](https://nodejs.org/en/download/)
 ## Install E2E diagnostic provision CLI from NPM repository
 ```bash
 npm install e2e-diagnostic-provision-cli -g --registry=https://www.myget.org/F/e2e-diagnostic-provision-cli/npm/
+
 e2e-provision
 ```
 
