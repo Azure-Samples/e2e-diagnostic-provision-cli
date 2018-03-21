@@ -723,35 +723,13 @@ async function run() {
     }
   }
   catch (e) {
-    console.log(colors.red.bold('Something went error during deployment: ', e.message));
+    console.log(colors.red.bold('Something went error during deployment: '));
+    console.log(e);
   }
 }
 
 program
-  .version('1.1.0')
+  .version('1.1.2')
   .description('This tool would help you create necessary resources for end to end diagnostics.')
-// .option('-n, --name <name>', 'your name', 'GK')
-// .option('-a, --age <age>', 'your age', '22')
-// .option('-e, --enjoy [enjoy]')
 program.parse(process.argv);
 run();
-
-
-
-// async function test() {
-//   credentials = await login();
-//   let s = "abc";
-//   data.choice = 2;
-//   data.eventhub.connectionString = s;
-//   data.ai.instrumentationKey = s;
-//   data.storage.connectionString = '';
-//   data.storage.name = '';
-//   data.subscriptionId = "0d0575c0-0b3f-458a-a1a7-7a618a596892";
-//   data.resourceGroup = "zhiqing-auto-3"
-//   data.location = "East US"
-//   data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
-
-//   await createLogAnalytics();
-// }
-
-// test();
