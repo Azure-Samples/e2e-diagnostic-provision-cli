@@ -1,6 +1,6 @@
 {
   "name": "e2e-diagnostic-provision-cli",
-  "version": "1.1.2",
+  "version": "2.0.0",
   "description": "Provision Azure resource for IoT E2E diagnostics",
   "main": "e2e-provision.js",
   "scripts": {
@@ -9,11 +9,10 @@
   "author": "michaeljqzq@gmail.com",
   "license": "MIT",
   "dependencies": {
-    "azure-arm-appinsights": "^1.1.0-preview",
+    "azure-arm-appinsights": "^2.1.0",
     "azure-arm-eventhub": "^1.2.0-preview",
     "azure-arm-iothub": "^1.1.0-preview",
     "azure-arm-monitor": "^1.0.1-preview",
-    "azure-arm-operationalinsights": "^1.1.0",
     "azure-arm-resource": "^3.1.0-preview",
     "azure-arm-storage": "^3.2.0",
     "azure-arm-website": "^3.0.0-preview",
