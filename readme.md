@@ -20,22 +20,8 @@ e2e-provision
 In this tool, we will create several resources necessary for end to end diagnostics.
 We will create a new resource group to hold all created resources.  
 You can create a new IoT Hub or use existing one.  
-Then diagnostics info will be exported to a place. There're 3 choices:
-
-## Store the diagnostics info to Event Hub
-If you choose to store the diagnostics info to Event Hub, the flow is like this.
+Then diagnostics info will be exported to Event Hub, and the flow is like this.
 ![](doc/eventhub.png "Eventhub")
 
-It will create an Event Hub, Application Insights, Storage account(for function app), Function app, and an Web App(For visualization, you can also choose to deploy on your own web server)
+It will create an Event Hub, Application Insights, Storage account(for function app), Function app
 
-## Store the diagnostics info to Storage Account
-If you choose to store the diagnostics info to Storage Account, the flow is like this.
-![Storage](doc/storage.png)
-
-It will create an Storage account, and an Web App(For visualization, you can also choose to deploy on your own web server)
-
-## Store the diagnostics info to Log Analytics
-If you choose to store the diagnostics info to Log Analytics, the flow is like this.
-![Storage](doc/loganalytics.png)
-
-It will create a Log Analytics, and instead of using a web app to visualize data like previous 2 choices, it will use SQL-like query to generate diagram.
