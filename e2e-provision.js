@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 const MsRest = require('ms-rest-azure');
-const SubscriptionClient = require('azure-asm-subscription');
 const ResourceClient = require('azure-arm-resource');
 const IoTHubClient = require('azure-arm-iothub');
 const MonitorManagementClient = require('azure-arm-monitor');
@@ -8,7 +7,6 @@ const EventHubClient = require('azure-arm-eventhub');
 const AppInsightsClient = require("azure-arm-appinsights");
 const StorageManagementClient = require('azure-arm-storage');
 const WebSiteManagementClient = require('azure-arm-website');
-const OperationalInsightsManagement = require("azure-arm-operationalinsights");
 const inquirer = require('inquirer');
 const uuidV4 = require('uuid/v4');
 const colors = require('colors/safe');
@@ -26,12 +24,9 @@ let data = {
   iothubResourceGroup: '',
   location: '',
   choice: 0, // 0 Eventhub, 1 storage, 2 Log Analytics
-  deployWebapp: 0, // 0 deploy web app, 1 deploy own server, 2 not deploy
   suffix: '',
   currentStep: 1,
   overallSteps: 1,
-  overallStepsTemplate: [6,3,3],
-  estimatedTimeTemplate: [10,5,5],
   availableLocationList: [
     "Australia East",
     "Australia Southeast",
@@ -87,28 +82,12 @@ let data = {
       aiInstrumentationKey: 'E2E_DIAGNOSTICS_AI_INSTRUMENTATION_KEY',
     },
     githubRepo: 'https://github.com/Azure-Samples/e2e-diagnostic-eventhub-ai-function',
-    githubBranch: 'auto',
+    githubBranch: 'master',
   },
   storage: {
     id: '',
     connectionString: '',
     name: '',
-  },
-  webapp: {
-    githubRepo: 'https://github.com/Azure-Samples/e2e-diagnostics-portal',
-    githubBranch: 'static',
-    envKey: {
-      subscriptionId: 'SUBSCRIPTION_ID',
-      resourceGroup: 'RESOURCE_GROUP_NAME',
-      iothub: 'IOTHUB_CONNECTION_STRING',
-      aiAppId: 'AI_APP_ID',
-      aiApiKey: 'AI_API_KEY',
-      aiName: 'AI_NAME',
-      storageCs: 'STORAGE_CONNECTION_STRING',
-    }
-  },
-  oms: {
-    id: '',
   }
 }
 
@@ -192,55 +171,7 @@ async function createResourceGroup() {
 }
 
 async function setOption() {
-  let sourceAnswers = await inquirer.prompt({
-    type: 'list',
-    name: 'choice',
-    message: 'Choose the destination of diagnostic logs',
-    choices: [
-      {
-        name: 'Event Hub (It will create Event Hub, Application Insights and Azure Function including a storage account.)',
-        value: 0
-      },
-      {
-        name: 'Storage (It will create Storage account.)',
-        value: 1
-      },
-      {
-        name: 'Log Analytics (It will create Log Analytics and you need to use SQL-like query to do visualization)',
-        value: 2
-      }
-    ],
-  });
-  data.choice = sourceAnswers.choice;
-  console.log();
-  data.overallSteps = data.overallStepsTemplate[data.choice];
-
-  if (data.choice === 0 || data.choice === 1) {
-    let webappAnswers = await inquirer.prompt({
-      type: 'list',
-      name: 'webapp',
-      message: 'A web portal will be provided to visualize diagnostic data. Choose how to deploy this portal',
-      choices: [
-        {
-          name: 'Deploy on Azure Web app(Which will need less manual work)',
-          value: 0
-        },
-        {
-          name: 'Deploy on your own server',
-          value: 1
-        },
-        {
-          name: 'Do not deploy web portal(Visualize by yourself)',
-          value: 2
-        },
-      ],
-    });
-    data.deployWebapp = webappAnswers.webapp;
-    if(data.deployWebapp === 0) {
-      data.overallSteps++;
-    }
-    console.log();
-  }
+  data.overallSteps = 6;
 }
 
 async function getExistingIoTHub() {
@@ -302,7 +233,7 @@ async function createIoTHub() {
 
   const client = new IoTHubClient(credentials, data.subscriptionId);
 
-  console.log(colors.green.bold(`\nProvision work start, it will need about ${data.estimatedTimeTemplate[data.choice]} minutes, please wait...\n`));
+  console.log(colors.green.bold(`\nProvision work start, it will need about 10 minutes, please wait...\n`));
 
   let result, hostName;
   console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
@@ -383,7 +314,7 @@ async function createApplicationInsights() {
   console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const appInsightsOptions = {
     name: 'application-insights' + data.suffix,
-    kind: 'store',
+    kind: 'web',
     applicationType: 'other',
     location: 'East US',
     subscriptionid: data.subscriptionId,
@@ -514,22 +445,6 @@ async function createStorage() {
   console.log(`Connection string fetched\n\n-------------------------------------------------------------------\n`);
 }
 
-async function createLogAnalytics() {
-  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
-  const client = new OperationalInsightsManagement(credentials, data.subscriptionId);
-
-  let omsOptions = {
-    sku: { name: 'Free' },
-    location: 'eastus', // Log analytics doesn't need to be same location with iot hub
-  }
-
-  let name = 'oms' + data.suffix;
-  console.log(`Creating Log Analytics (OMS workspace) ${name}...`);
-  let result = await client.workspaces.createOrUpdate(data.resourceGroup, name, omsOptions);
-  data.oms.id = result.id;
-  console.log(`Log Analytics (OMS workspace) created\n\n-------------------------------------------------------------------\n`);
-}
-
 async function setIoTHubDiagnostics() {
   console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   let client = new MonitorManagementClient(credentials, data.subscriptionId);
@@ -547,136 +462,11 @@ async function setIoTHubDiagnostics() {
   if (data.choice === 0) {
     diagnosticOptions.eventHubAuthorizationRuleId = data.eventhub.authorizationRuleId;
     diagnosticOptions.eventHubName = defaultEventHubName4Log;
-  } else if (data.choice === 1) {
-    diagnosticOptions.storageAccountId = data.storage.id;
-  } else {
-    diagnosticOptions.workspaceId = data.oms.id;
-  }
+  } 
+
   console.log(`Setting the IoT Hub diagnostics settings...`);
   let result = await client.diagnosticSettingsOperations.createOrUpdate(data.iothub.id, diagnosticOptions, 'e2e-diag');
   console.log(`IoT Hub diagnostics settings set\n\n-------------------------------------------------------------------\n`);
-}
-
-async function createWebApp() {
-  console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
-  let appSettings;
-
-  if (data.choice === 0) {
-    if (!data.ai.name || !data.ai.applicationId || !data.ai.apiKey) {
-      throw new Error('Web app depends on Application insights information which is empty');
-    }
-  } else {
-    if (!data.storage.connectionString) {
-      throw new Error('Web app depends on Storage information which is empty');
-    }
-  }
-
-  if (data.choice === 0) {
-    appSettings = [
-      {
-        name: 'WEBSITE_NODE_DEFAULT_VERSION',
-        value: '6.9.1',
-      },
-      {
-        name: data.webapp.envKey.subscriptionId,
-        value: data.subscriptionId,
-      },
-      {
-        name: data.webapp.envKey.resourceGroup,
-        value: data.resourceGroup,
-      },
-      {
-        name: data.webapp.envKey.iothub,
-        value: data.iothub.connectionString,
-      },
-      {
-        name: data.webapp.envKey.aiName,
-        value: data.ai.name,
-      },
-      {
-        name: data.webapp.envKey.aiAppId,
-        value: data.ai.applicationId,
-      },
-      {
-        name: data.webapp.envKey.aiApiKey,
-        value: data.ai.apiKey,
-      },
-    ]
-  } else {
-    appSettings = [
-      {
-        name: 'WEBSITE_NODE_DEFAULT_VERSION',
-        value: '6.9.1',
-      },
-      {
-        name: data.webapp.envKey.subscriptionId,
-        value: data.subscriptionId,
-      },
-      {
-        name: data.webapp.envKey.resourceGroup,
-        value: data.resourceGroup,
-      },
-      {
-        name: data.webapp.envKey.iothub,
-        value: data.iothub.connectionString,
-      },
-      {
-        name: data.webapp.envKey.storageCs,
-        value: data.storage.connectionString,
-      },
-    ]
-  }
-  const webAppOptions = {
-    serverFarmId: data.serviceplan.id,
-    location: data.location,
-    siteConfig: {
-      appSettings,
-    },
-  }
-
-  const deployOptions = {
-    repoUrl: data.webapp.githubRepo,
-    branch: data.webapp.githubBranch,
-    isManualIntegration: true
-  }
-
-  const webAppName = 'portal' + data.suffix;
-
-  let client = new WebSiteManagementClient(credentials, data.subscriptionId);
-  console.log(`Creating Web app ${webAppName}...`);
-  let webAppResult = await client.webApps.createOrUpdate(data.resourceGroup, webAppName, webAppOptions);
-  console.log(`Web app created\n`);
-
-  console.log(`Sync E2E portal to web app ${webAppName}...`);
-  let deployResult = await client.webApps.createOrUpdateSourceControl(data.resourceGroup, webAppName, deployOptions);
-  console.log(`E2E portal deployed\n`)
-
-  console.log(`Visit portal in this link: ${colors.green.bold.underline('http://' + webAppResult.hostNames[0])}\n\n-------------------------------------------------------------------\n`);
-}
-
-async function showInstructionsToDeployWebapp() {
-  console.log(`Here's the instructions to deploy web portal on your own server.\n`);
-  console.log(`First you need to set some environement variables:\n\n-------------------------------------------------------------------\n`);
-  console.log(`${data.webapp.envKey.subscriptionId} : ${data.subscriptionId}\n`);
-  console.log(`${data.webapp.envKey.resourceGroup} : ${data.resourceGroup}\n`);
-  console.log(`${data.webapp.envKey.iothub} : ${data.iothub.connectionString}\n`);
-  if (data.choice === 0) {
-    console.log(`${data.webapp.envKey.aiName} : ${data.ai.name}\n`);
-    console.log(`${data.webapp.envKey.aiAppId} : ${data.ai.applicationId}\n`);
-    console.log(`${data.webapp.envKey.aiApiKey} : ${data.ai.apiKey}\n`);
-  } else {
-    console.log(`${data.webapp.envKey.storageCs} : ${data.storage.connectionString}\n`);
-  }
-  console.log();
-  console.log(`Then you need to set one more environment variable to specify the port which the portal running on`);
-  console.log(`PORT : <THE_PORT_OF_PORTAL>`);
-  console.log(`Please notice that if you use a lower port like 80, then you probably need administrator/root privilege. On Windows system, 80 is likely to be occupied by IIS service. Try using port larger than 1024 if you meet problem.`);
-  console.log();
-  console.log(`Open a new command window and execute following commands`);
-  console.log(`git clone https://github.com/Azure-Samples/e2e-diagnostics-portal.git`);
-  console.log(`cd e2e-diagnostics-portal`);
-  console.log(`npm i`);
-  console.log(`npm run deploy`);
 }
 
 async function doChoice0() {
@@ -686,24 +476,6 @@ async function doChoice0() {
   await createStorage();
   await setIoTHubDiagnostics();
   await createFunctionApp();
-  if (data.deployWebapp === 0) {
-    await createWebApp();
-  }
-}
-
-async function doChoice1() {
-  await createIoTHub();
-  await createStorage();
-  await setIoTHubDiagnostics();
-  if (data.deployWebapp === 0) {
-    await createWebApp();
-  }
-}
-
-async function doChoice2() {
-  await createIoTHub();
-  await createLogAnalytics();
-  await setIoTHubDiagnostics();
 }
 
 async function run() {
@@ -715,19 +487,10 @@ async function run() {
     await setOption();
     data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
     
-    if (data.choice === 0) {
-      await doChoice0();
-    } else if (data.choice === 1) {
-      await doChoice1();
-    } else {
-      await doChoice2();
-    }
+    await doChoice0();
+
     console.log(colors.green.bold(`\n-------------------------------------------------------------------\n\n*** All the deployment work successfully finished. ***\n`));
     console.log(`Use this device connection string to have a test: ${colors.green.bold(data.iothub.deviceConnectionString)}\n`);
-
-    if (data.deployWebapp === 1 && data.choice !== 2) {
-      await showInstructionsToDeployWebapp();
-    }
   }
   catch (e) {
     console.log(colors.red.bold('Something went error during deployment: '));
@@ -736,7 +499,7 @@ async function run() {
 }
 
 program
-  .version('1.1.2')
+  .version('2.0.0')
   .description('This tool would help you create necessary resources for end to end diagnostics.')
 program.parse(process.argv);
 run();
