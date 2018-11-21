@@ -82,7 +82,7 @@ let data = {
       aiInstrumentationKey: 'E2E_DIAGNOSTICS_AI_INSTRUMENTATION_KEY',
     },
     githubRepo: 'https://github.com/Azure-Samples/e2e-diagnostic-eventhub-ai-function',
-    githubBranch: 'rentu-update',
+    githubBranch: 'master',
   },
   storage: {
     id: '',
