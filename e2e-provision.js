@@ -420,7 +420,7 @@ async function createFunctionApp() {
 
   console.log(`Creating Function app ${functionAppName}...`);
   let functionAppResult = await client.webApps.createOrUpdateSourceControl(data.resourceGroup, functionSiteName, functionAppOptions);
-  // When deployed function app, it will not consume Event Hub data.(Don't know why). 
+  // When deployed function app, it will not consume Event Hub data.(Don't know why).
   let restartResult = await client.webApps.restart(data.resourceGroup, functionSiteName);
   console.log(`Function app created\n\n-------------------------------------------------------------------\n`)
 }
@@ -464,7 +464,7 @@ async function setIoTHubDiagnostics() {
   if (data.choice === 0) {
     diagnosticOptions.eventHubAuthorizationRuleId = data.eventhub.authorizationRuleId;
     diagnosticOptions.eventHubName = defaultEventHubName4Log;
-  } 
+  }
 
   console.log(`Setting the IoT Hub diagnostics settings...`);
   let result = await client.diagnosticSettingsOperations.createOrUpdate(data.iothub.id, diagnosticOptions, 'e2e-diag');
@@ -481,14 +481,14 @@ async function doChoice0() {
 }
 
 async function run() {
-  console.log(colors.green.bold(`*** Welcome to E2E diagnostic provision CLI ***\nThis tool would help you create necessary resources for end to end diagnostics.\nIf you would like to know what will be created, visit this document: ${colors.underline('https://github.com/michaeljqzq/happy-deploy')}\n`));
+  console.log(colors.green.bold(`*** Welcome to E2E diagnostic provision CLI ***\nThis tool would help you create necessary resources for end to end diagnostics.\nIf you would like to know what will be created, visit this document: ${colors.underline('https://github.com/Azure-Samples/e2e-diagnostic-provision-cli')}\n`));
   try {
     credentials = await login();
     await getSubscription();
     await createResourceGroup();
     await setOption();
     data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
-    
+
     await doChoice0();
 
     console.log(colors.green.bold(`\n-------------------------------------------------------------------\n\n*** All the deployment work successfully finished. ***\n`));
