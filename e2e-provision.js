@@ -16,6 +16,8 @@ const IoTHubRegistry = require('azure-iothub').Registry;
 
 const defaultEventHubName4Log = 'insights-logs-e2ediagnostics';
 
+const CanaryRegionName = "Central US EUAP";
+
 let credentials = '';
 
 let data = {
@@ -151,7 +153,7 @@ async function createResourceGroup() {
     default: () => 'e2e-diagnostics'
   });
 
-  if (data.iothub.useNew) {
+  //if (data.iothub.useNew) {
     let answers = await inquirer.prompt({
       type: 'list',
       name: 'location',
@@ -160,12 +162,12 @@ async function createResourceGroup() {
     });
     data.location = answers.location;
     console.log();
-  }
+  //}
 
-  console.log(`Creating resource group ${nameAnswers.name} on location ${data.location}`);
+  console.log(`Creating resource group ${nameAnswers.name} on location ${CanaryRegionName}`);
   let client = new ResourceClient.ResourceManagementClient(credentials, data.subscriptionId);
 
-  let result = await client.resourceGroups.createOrUpdate(nameAnswers.name, { location: data.location });
+  let result = await client.resourceGroups.createOrUpdate(nameAnswers.name, { location: CanaryRegionName });
   data.resourceGroup = result.name;
   console.log(`Resource group created\n`);
 }
@@ -192,7 +194,7 @@ async function getExistingIoTHub() {
   data.iothub.name = answers.iothub.name;
   data.iothub.id = answers.iothub.id;
   data.iothub.hostName = answers.iothub.properties.hostName;
-  data.location = answers.iothub.location;
+  //data.location = answers.iothub.location;
   data.iothubResourceGroup = answers.iothub.resourcegroup;
 }
 
@@ -215,7 +217,7 @@ async function createIoTHub() {
 
     hubDescription = {
       name: nameAnswers.name,
-      location: data.location,
+      location: CanaryRegionName,
       subscriptionid: data.subscriptionId,
       resourcegroup: data.resourceGroup,
       sku: { name: skuAnswers.sku, capacity: 1 },
@@ -285,7 +287,7 @@ async function createIoTHub() {
 async function createEventHub() {
   console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const eventHubOptions = {
-    location: data.location,
+    location: CanaryRegionName,
     subscriptionid: data.subscriptionId,
     resourcegroup: data.resourceGroup,
     sku: { name: 'Basic', capacity: 1 }, //Basic, Standard or Premium
@@ -426,7 +428,7 @@ async function createFunctionApp() {
 async function createStorage() {
   console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const storageOptions = {
-    location: data.location,
+    location: CanaryRegionName,
     sku: { name: 'Standard_LRS' },
     kind: 'Storage',
   }
@@ -450,7 +452,7 @@ async function setIoTHubDiagnostics() {
   let client = new MonitorManagementClient(credentials, data.subscriptionId);
   let diagnosticOptions = {
     logs: [{
-      category: 'E2EDiagnostics',
+      category: 'DistributedTracing',
       enabled: true,
     },
     {
