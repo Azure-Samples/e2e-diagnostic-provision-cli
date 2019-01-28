@@ -5,11 +5,17 @@
 Make sure node version is not less than V7.6.0 (node -v)  
 Install Node JS from [here](https://nodejs.org/en/download/)
 
-## Install E2E diagnostic provision CLI from NPM repository
+## (Option 1) Install E2E diagnostic provision CLI from NPM repository
 ```bash
 npm install e2e-diagnostic-provision-cli -g --registry=https://www.myget.org/F/e2e-diagnostic-provision-cli/npm
 
 e2e-provision
+```
+
+## (Option 1) Compile and Run package locally
+```
+npm install
+node e2e-provision.js
 ```
 
 # Work flow of E2E diagnostic provision CLI
@@ -64,10 +70,10 @@ requests | union dependencies | order by duration desc | take 10
 
 ```sql
 let logs = requests | union dependencies | where id matches regex "^00-.*?-.*?-01$" | extend traceId = substring(id, 0,35);
-let incompleteLogTraceId = logs | summarize logNum=count(traceId) by traceId | where logNum < 5;
+let incompleteLogTraceId = logs | summarize logNum=count(traceId) by traceId | where logNum < 3;
 let incompleteLogs = logs | join kind = inner incompleteLogTraceId on traceId;
 let incompleteLogsWithRoutingDisabled = incompleteLogs | where customDimensions.isRoutingEnabled == "False" | project traceId = substring(id, 0,35);
-let reachLastServiceLogTraceId = incompleteLogs | where name == "Third Party Service Ingress Latency" | project traceId = substring(id, 0,35);
+let reachLastServiceLogTraceId = incompleteLogs | where name == "Egress Latency" | project traceId = substring(id, 0,35);
 let notReachLastServiceLogTraceId = incompleteLogTraceId | join kind=leftanti reachLastServiceLogTraceId on traceId;
 let notReachLastServiceLogTraceIdExceptRoutingDisabled = notReachLastServiceLogTraceId | join kind=leftanti incompleteLogsWithRoutingDisabled on traceId;
 logs | join kind = inner notReachLastServiceLogTraceIdExceptRoutingDisabled on traceId | order by id 
