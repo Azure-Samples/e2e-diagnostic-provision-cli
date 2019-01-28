@@ -5,14 +5,15 @@
 Make sure node version is not less than V7.6.0 (node -v)  
 Install Node JS from [here](https://nodejs.org/en/download/)
 
-## (Option 1) Install E2E diagnostic provision CLI from NPM repository
+### (Option 1) Install E2E diagnostic provision CLI from NPM repository
 ```bash
 npm install e2e-diagnostic-provision-cli -g --registry=https://www.myget.org/F/e2e-diagnostic-provision-cli/npm
 
 e2e-provision
 ```
 
-## (Option 1) Compile and Run package locally
+### (Option 2) Compile and Run package locally
+*For Distributed Tracing bug bash, please use branch publicpreview*
 ```
 npm install
 node e2e-provision.js
