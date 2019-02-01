@@ -16,8 +16,6 @@ const IoTHubRegistry = require('azure-iothub').Registry;
 
 const defaultEventHubName4Log = 'insights-logs-e2ediagnostics';
 
-const CanaryRegionName = "Central US EUAP";
-
 let credentials = '';
 
 let data = {
@@ -30,29 +28,9 @@ let data = {
   currentStep: 1,
   overallSteps: 1,
   availableLocationList: [
-    "Australia East",
-    "Australia Southeast",
-    "Brazil South",
-    "Canada Central",
-    "Canada East",
-    "Central India",
-    "Central US",
-    "East Asia",
-    "East US",
-    "East US 2",
-    "Japan East",
-    "Japan West",
     "North Europe",
-    "South Central US",
-    "South India",
     "Southeast Asia",
-    "UK South",
-    "UK West",
-    "West Central US",
-    "West Europe",
-    "West India",
-    "West US",
-    "West US 2"
+    "West US 2",
   ],
   iothub: {
     role: 'iothubowner',
@@ -153,7 +131,7 @@ async function createResourceGroup() {
     default: () => 'e2e-diagnostics'
   });
 
-  //if (data.iothub.useNew) {
+  if (data.iothub.useNew) {
     let answers = await inquirer.prompt({
       type: 'list',
       name: 'location',
@@ -162,12 +140,12 @@ async function createResourceGroup() {
     });
     data.location = answers.location;
     console.log();
-  //}
+  }
 
-  console.log(`Creating resource group ${nameAnswers.name} on location ${CanaryRegionName}`);
+  console.log(`Creating resource group ${nameAnswers.name} on location ${data.location}`);
   let client = new ResourceClient.ResourceManagementClient(credentials, data.subscriptionId);
 
-  let result = await client.resourceGroups.createOrUpdate(nameAnswers.name, { location: CanaryRegionName });
+  let result = await client.resourceGroups.createOrUpdate(nameAnswers.name, { location: data.location });
   data.resourceGroup = result.name;
   console.log(`Resource group created\n`);
 }
@@ -194,7 +172,12 @@ async function getExistingIoTHub() {
   data.iothub.name = answers.iothub.name;
   data.iothub.id = answers.iothub.id;
   data.iothub.hostName = answers.iothub.properties.hostName;
-  //data.location = answers.iothub.location;
+  data.location = answers.iothub.location;
+  
+  if(!["westus2", "Southeast Asia","northeurope"].includes(data.location)) {
+    throw new Error(`Now distributed tracing is only support in these locations: [${data.availableLocationList.join(", ")}], please re-run the cli and try again.`);
+  }
+
   data.iothubResourceGroup = answers.iothub.resourcegroup;
 }
 
@@ -217,7 +200,7 @@ async function createIoTHub() {
 
     hubDescription = {
       name: nameAnswers.name,
-      location: CanaryRegionName,
+      location: data.location,
       subscriptionid: data.subscriptionId,
       resourcegroup: data.resourceGroup,
       sku: { name: skuAnswers.sku, capacity: 1 },
@@ -287,7 +270,7 @@ async function createIoTHub() {
 async function createEventHub() {
   console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const eventHubOptions = {
-    location: CanaryRegionName,
+    location: data.location,
     subscriptionid: data.subscriptionId,
     resourcegroup: data.resourceGroup,
     sku: { name: 'Basic', capacity: 1 }, //Basic, Standard or Premium
@@ -428,7 +411,7 @@ async function createFunctionApp() {
 async function createStorage() {
   console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const storageOptions = {
-    location: CanaryRegionName,
+    location: data.location,
     sku: { name: 'Standard_LRS' },
     kind: 'Storage',
   }
