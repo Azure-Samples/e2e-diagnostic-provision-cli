@@ -16,6 +16,8 @@ const IoTHubRegistry = require('azure-iothub').Registry;
 
 const defaultEventHubName4Log = 'insights-logs-e2ediagnostics';
 
+const CanaryRegionName = "Central US EUAP";
+
 let credentials = '';
 
 let data = {
@@ -151,7 +153,7 @@ async function createResourceGroup() {
     default: () => 'e2e-diagnostics'
   });
 
-  if (data.iothub.useNew) {
+  //if (data.iothub.useNew) {
     let answers = await inquirer.prompt({
       type: 'list',
       name: 'location',
@@ -160,12 +162,12 @@ async function createResourceGroup() {
     });
     data.location = answers.location;
     console.log();
-  }
+  //}
 
-  console.log(`Creating resource group ${nameAnswers.name} on location ${data.location}`);
+  console.log(`Creating resource group ${nameAnswers.name} on location ${CanaryRegionName}`);
   let client = new ResourceClient.ResourceManagementClient(credentials, data.subscriptionId);
 
-  let result = await client.resourceGroups.createOrUpdate(nameAnswers.name, { location: data.location });
+  let result = await client.resourceGroups.createOrUpdate(nameAnswers.name, { location: CanaryRegionName });
   data.resourceGroup = result.name;
   console.log(`Resource group created\n`);
 }
@@ -192,7 +194,7 @@ async function getExistingIoTHub() {
   data.iothub.name = answers.iothub.name;
   data.iothub.id = answers.iothub.id;
   data.iothub.hostName = answers.iothub.properties.hostName;
-  data.location = answers.iothub.location;
+  //data.location = answers.iothub.location;
   data.iothubResourceGroup = answers.iothub.resourcegroup;
 }
 
@@ -215,7 +217,7 @@ async function createIoTHub() {
 
     hubDescription = {
       name: nameAnswers.name,
-      location: data.location,
+      location: CanaryRegionName,
       subscriptionid: data.subscriptionId,
       resourcegroup: data.resourceGroup,
       sku: { name: skuAnswers.sku, capacity: 1 },
@@ -285,7 +287,7 @@ async function createIoTHub() {
 async function createEventHub() {
   console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const eventHubOptions = {
-    location: data.location,
+    location: CanaryRegionName,
     subscriptionid: data.subscriptionId,
     resourcegroup: data.resourceGroup,
     sku: { name: 'Basic', capacity: 1 }, //Basic, Standard or Premium
@@ -418,7 +420,7 @@ async function createFunctionApp() {
 
   console.log(`Creating Function app ${functionAppName}...`);
   let functionAppResult = await client.webApps.createOrUpdateSourceControl(data.resourceGroup, functionSiteName, functionAppOptions);
-  // When deployed function app, it will not consume Event Hub data.(Don't know why). 
+  // When deployed function app, it will not consume Event Hub data.(Don't know why).
   let restartResult = await client.webApps.restart(data.resourceGroup, functionSiteName);
   console.log(`Function app created\n\n-------------------------------------------------------------------\n`)
 }
@@ -426,7 +428,7 @@ async function createFunctionApp() {
 async function createStorage() {
   console.log(`[Step ${data.currentStep++}/${data.overallSteps}]\n`);
   const storageOptions = {
-    location: data.location,
+    location: CanaryRegionName,
     sku: { name: 'Standard_LRS' },
     kind: 'Storage',
   }
@@ -450,7 +452,7 @@ async function setIoTHubDiagnostics() {
   let client = new MonitorManagementClient(credentials, data.subscriptionId);
   let diagnosticOptions = {
     logs: [{
-      category: 'E2EDiagnostics',
+      category: 'DistributedTracing',
       enabled: true,
     },
     {
@@ -462,7 +464,7 @@ async function setIoTHubDiagnostics() {
   if (data.choice === 0) {
     diagnosticOptions.eventHubAuthorizationRuleId = data.eventhub.authorizationRuleId;
     diagnosticOptions.eventHubName = defaultEventHubName4Log;
-  } 
+  }
 
   console.log(`Setting the IoT Hub diagnostics settings...`);
   let result = await client.diagnosticSettingsOperations.createOrUpdate(data.iothub.id, diagnosticOptions, 'e2e-diag');
@@ -479,14 +481,14 @@ async function doChoice0() {
 }
 
 async function run() {
-  console.log(colors.green.bold(`*** Welcome to E2E diagnostic provision CLI ***\nThis tool would help you create necessary resources for end to end diagnostics.\nIf you would like to know what will be created, visit this document: ${colors.underline('https://github.com/michaeljqzq/happy-deploy')}\n`));
+  console.log(colors.green.bold(`*** Welcome to E2E diagnostic provision CLI ***\nThis tool would help you create necessary resources for end to end diagnostics.\nIf you would like to know what will be created, visit this document: ${colors.underline('https://github.com/Azure-Samples/e2e-diagnostic-provision-cli')}\n`));
   try {
     credentials = await login();
     await getSubscription();
     await createResourceGroup();
     await setOption();
     data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
-    
+
     await doChoice0();
 
     console.log(colors.green.bold(`\n-------------------------------------------------------------------\n\n*** All the deployment work successfully finished. ***\n`));

@@ -1,6 +1,6 @@
 {
   "name": "e2e-diagnostic-provision-cli",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Provision Azure resource for IoT E2E diagnostics",
   "main": "e2e-provision.js",
   "scripts": {
