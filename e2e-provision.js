@@ -257,7 +257,7 @@ async function createIoTHub() {
 
   console.log(`Setting device diagnostic sampling rate to ${samplingRateAnswers.rate}...`);
   await new Promise((resolve, reject) => {
-    registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { __e2e_diag_sample_rate: parseInt(samplingRateAnswers.rate) } } }, '*', (err, result) => {
+    registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { "azureiot*com^dtracing^1": {"sampling_mode": 1, "sampling_rate": parseInt(samplingRateAnswers.rate) } } } }, '*', (err, result) => {
       if (err) {
         reject(err);
       }
