@@ -1,5 +1,8 @@
 # E2E diagnostic provision CLI &middot; ![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg) [![npm version](https://img.shields.io/npm/v/e2e-happy-deploy.svg?style=flat)](https://www.npmjs.com/package/e2e-happy-deploy) 
 
+# Introduction
+This CLI tool would help user create necessary resources to visualize the flow of IoT Hub messages through Application Map using Azure Function and Event Hub. It is powered by IoT Hub distributed tracing feature, and can help user easily do E2E diagnostic.
+
 # How to use
 ## Setup Environment
 Make sure node version is not less than V7.6.0 (node -v)  
@@ -13,7 +16,6 @@ e2e-provision
 ```
 
 ### (Option 2) Compile and Run package locally
-*For Distributed Tracing bug bash, please use branch publicpreview*
 ```
 npm install
 node e2e-provision.js
