@@ -128,7 +128,7 @@ async function createResourceGroup() {
     type: 'input',
     name: 'name',
     message: "Input the resource group name. All the resources will be created in this group",
-    default: () => 'e2e-diagnostics'
+    default: () => 'dis-tracing' + uuidV4().substring(0, 4)
   });
 
   if (data.iothub.useNew) {
@@ -229,15 +229,13 @@ async function createIoTHub() {
     samplingRateAnswers = await inquirer.prompt({
       type: 'input',
       name: 'rate',
-      message: "Set the diagnostic sampling rate, between [0, 100]",
+      message: "Set the distributed tracing sampling rate, between [0, 100]",
       default: () => 100,
     });
     if (isValidSamplingRate(samplingRateAnswers.rate)) {
       break;
     }
   }
-
-  console.log(colors.bgBlue.bold(`Please notice that E2E diagnostic is a private-preview feature, so your IoT Hub needs to be whitelisted to enable the feature. Refer to 'Azure IoT Hub with IoT Diagnostics feature enabled' part in the document to do it.\n`));
 
   const client = new IoTHubClient(credentials, data.subscriptionId);
 
@@ -261,7 +259,7 @@ async function createIoTHub() {
   console.log(`Connection string fetched\n`);
 
   const deviceOptions = {
-    deviceId: 'e2e-diag',
+    deviceId: 'distributed-tracing-device',
     status: 'enabled'
   };
 
@@ -278,7 +276,7 @@ async function createIoTHub() {
   data.iothub.deviceConnectionString = `HostName=${data.iothub.useNew ? hostName : data.iothub.hostName};DeviceId=${deviceResult.deviceId};SharedAccessKey=${deviceResult.authentication.symmetricKey.primaryKey}`;
   console.log(`IoT Hub Device created\n`);
 
-  console.log(`Setting device diagnostic sampling rate to ${samplingRateAnswers.rate}...`);
+  console.log(`Setting device distributed tracing sampling rate to ${samplingRateAnswers.rate}...`);
   await new Promise((resolve, reject) => {
     registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { "azureiot*com^dtracing^1": {"sampling_mode": 1, "sampling_rate": parseInt(samplingRateAnswers.rate) } } } }, '*', (err, result) => {
       if (err) {
@@ -329,7 +327,7 @@ async function createApplicationInsights() {
     resourcegroup: data.resourceGroup,
   }
   const apiKeyOptions = {
-    name: 'e2e-diagnostics',
+    name: 'distributed-tracing',
     linkedReadProperties: [`/subscriptions/${data.subscriptionId}/resourceGroups/${data.resourceGroup}/providers/microsoft.insights/components/${appInsightsOptions.name}/api`],
     linkedWriteProperties: [],
   };
@@ -472,9 +470,9 @@ async function setIoTHubDiagnostics() {
     diagnosticOptions.eventHubName = defaultEventHubName4Log;
   }
 
-  console.log(`Setting the IoT Hub diagnostics settings...`);
-  let result = await client.diagnosticSettingsOperations.createOrUpdate(data.iothub.id, diagnosticOptions, 'e2e-diag');
-  console.log(`IoT Hub diagnostics settings set\n\n-------------------------------------------------------------------\n`);
+  console.log(`Setting the IoT Hub distributed tracing settings...`);
+  let result = await client.diagnosticSettingsOperations.createOrUpdate(data.iothub.id, diagnosticOptions, 'distributed-tracing');
+  console.log(`IoT Hub distributed tracing settings set\n\n-------------------------------------------------------------------\n`);
 }
 
 async function doChoice0() {
@@ -487,13 +485,13 @@ async function doChoice0() {
 }
 
 async function run() {
-  console.log(colors.green.bold(`*** Welcome to E2E diagnostic provision CLI ***\nThis tool would help you create necessary resources for end to end diagnostics.\nIf you would like to know what will be created, visit this document: ${colors.underline('https://github.com/Azure-Samples/e2e-diagnostic-provision-cli')}\n`));
+  console.log(colors.green.bold(`*** Welcome to Azure IoT distributed tracing provision CLI ***\nThis tool would help you create necessary resources for distributed tracing.\nIf you would like to know what will be created, visit this document: ${colors.underline('https://github.com/Azure-Samples/e2e-diagnostic-provision-cli')}\n`));
   try {
     credentials = await login();
     await getSubscription();
     await createResourceGroup();
     await setOption();
-    data.suffix = '-e2e-diag-' + uuidV4().substring(0, 4);
+    data.suffix = '-dis-tracing' + uuidV4().substring(0, 4);
 
     await doChoice0();
 
@@ -507,7 +505,7 @@ async function run() {
 }
 
 program
-  .version('2.0.0')
-  .description('This tool would help you create necessary resources for end to end diagnostics.')
+  .version('2.0.3')
+  .description('This tool would help you create necessary resources for Azure IoT distributed tracing.')
 program.parse(process.argv);
 run();
