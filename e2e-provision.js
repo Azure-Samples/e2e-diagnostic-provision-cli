@@ -181,6 +181,23 @@ async function getExistingIoTHub() {
   data.iothubResourceGroup = answers.iothub.resourcegroup;
 }
 
+function isValidSamplingRate(value) {
+  if (value !== undefined) {
+    value = value.toString().trim();
+    if (!value) {
+      return false;
+    }
+    const containsOnlyNumber = /^\d+$/.test(value);
+    const num = parseFloat(value);
+    if (!containsOnlyNumber || !Number.isInteger(num) || num < 0 || num > 100) {
+      return false;
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
+
 async function createIoTHub() {
   let nameAnswers, skuAnswers, hubDescription;
   if (data.iothub.useNew) {
@@ -207,12 +224,18 @@ async function createIoTHub() {
     };
   }
 
-  let samplingRateAnswers = await inquirer.prompt({
-    type: 'input',
-    name: 'rate',
-    message: "Set the diagnostic sampling rate",
-    default: () => 100,
-  });
+  let samplingRateAnswers;
+  while (true) {
+    samplingRateAnswers = await inquirer.prompt({
+      type: 'input',
+      name: 'rate',
+      message: "Set the diagnostic sampling rate, between [0, 100]",
+      default: () => 100,
+    });
+    if (isValidSamplingRate(samplingRateAnswers.rate)) {
+      break;
+    }
+  }
 
   console.log(colors.bgBlue.bold(`Please notice that E2E diagnostic is a private-preview feature, so your IoT Hub needs to be whitelisted to enable the feature. Refer to 'Azure IoT Hub with IoT Diagnostics feature enabled' part in the document to do it.\n`));
 
@@ -257,7 +280,7 @@ async function createIoTHub() {
 
   console.log(`Setting device diagnostic sampling rate to ${samplingRateAnswers.rate}...`);
   await new Promise((resolve, reject) => {
-    registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { __e2e_diag_sample_rate: parseInt(samplingRateAnswers.rate) } } }, '*', (err, result) => {
+    registry.updateTwin(deviceOptions.deviceId, { properties: { desired: { "azureiot*com^dtracing^1": {"sampling_mode": 1, "sampling_rate": parseInt(samplingRateAnswers.rate) } } } }, '*', (err, result) => {
       if (err) {
         reject(err);
       }
