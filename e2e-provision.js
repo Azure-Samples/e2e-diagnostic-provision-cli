@@ -174,8 +174,7 @@ async function getExistingIoTHub() {
   data.iothub.hostName = answers.iothub.properties.hostName;
   data.location = answers.iothub.location;
   
-  console.log(data.location);
-  if(!["West US 2", "westus2", "Southeast Asia", "southeastasia", "North Europe", "northeurope"].includes(data.location)) {
+  if(!["west us 2", "westus2", "southeast asia", "southeastasia", "north europe", "northeurope"].includes(data.location.toLowerCase())) {
     throw new Error(`Now distributed tracing is only support in these locations: [${data.availableLocationList.join(", ")}], please re-run the cli and try again.`);
   }
 
