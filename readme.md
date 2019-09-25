@@ -6,6 +6,7 @@ products:
 - azure
 description: "Help users create necessary resources to visualize the flow of IoT Hub messages through Application Map using Azure Functions and Event Hub."
 name: "E2E diagnostic provision CLI"
+urlFragment: cli-sample
 ---
 
 # E2E diagnostic provision CLI &middot; ![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg) 
