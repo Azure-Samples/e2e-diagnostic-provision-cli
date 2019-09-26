@@ -12,6 +12,7 @@ urlFragment: cli-sample
 # E2E diagnostic provision CLI &middot; ![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg) 
 
 # Introduction
+
 This CLI tool would help user create necessary resources to visualize the flow of IoT Hub messages through Application Map using Azure Function and Event Hub. It is powered by IoT Hub distributed tracing feature, and can help user easily do E2E diagnostic. If you want to learn more about distributed tracing of Azure IoT Hub, you can refer this tutorial: [Trace Azure IoT device-to-cloud messages with distributed tracing](https://aka.ms/iottracing)
 
 # How to use
